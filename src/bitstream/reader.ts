@@ -6,13 +6,13 @@ let maskMap: Map<number, number>;
  * Represents a request to read a number of bits
  */
 interface BitstreamRequest {
-    resolve : (buffer : number) => void;
+    resolve: (buffer: number) => void;
     reject: (error: Error) => void;
     promise: Promise<number>;
-    length : number;
-    signed? : boolean;
-    float? : boolean;
-    assure? : boolean;
+    length: number;
+    signed?: boolean;
+    float?: boolean;
+    assure?: boolean;
 }
 
 /**
@@ -20,9 +20,9 @@ interface BitstreamRequest {
  * order
  */
 export class BitstreamReader {
-    private buffers : Uint8Array[] = [];
-    private bufferedLength : number = 0;
-    private blockedRequest : BitstreamRequest = null;
+    private buffers: Uint8Array[] = [];
+    private bufferedLength: number = 0;
+    private blockedRequest: BitstreamRequest = null;
     private _offsetIntoBuffer = 0;
     private _bufferIndex = 0;
     private _offset = 0;
@@ -59,14 +59,14 @@ export class BitstreamReader {
     set offset(value) {
         if (value < this._spentBufferSize) {
             throw new Error(
-                `Offset ${value} points into a discarded buffer! ` 
+                `Offset ${value} points into a discarded buffer! `
                 + `If you need to seek backwards outside the current buffer, make sure to set retainBuffers=true`
             );
         }
 
         let offsetIntoBuffer = value - this._spentBufferSize;
         let bufferIndex = 0;
-        
+
         for (let i = 0, max = this.buffers.length; i < max; ++i) {
             let buf = this.buffers[i];
             let size = buf.length * 8;
@@ -126,7 +126,7 @@ export class BitstreamReader {
      * visited. If you enable this, you will need to remove buffers manually using 
      * clean()
      */
-    retainBuffers : boolean = false;
+    retainBuffers: boolean = false;
 
     /**
      * Remove any fully used up buffers. Only has an effect if retainBuffers is true.
@@ -159,7 +159,7 @@ export class BitstreamReader {
      * @param length The number of bits to check for
      * @returns True if the required number of bits is available, false otherwise
      */
-    isAvailable(length : number) {
+    isAvailable(length: number) {
         return this.bufferedLength >= length;
     }
 
@@ -177,9 +177,9 @@ export class BitstreamReader {
      * @param options A set of options to control conversion into a string. @see StringEncodingOptions
      * @returns The resulting string
      */
-    async readString(length : number, options? : StringEncodingOptions): Promise<string> {
+    async readString(length: number, options?: StringEncodingOptions): Promise<string> {
         this.ensureNoReadPending();
-        await this.assure(8*length);
+        await this.assure(8 * length);
         return this.readStringSync(length, options);
     }
 
@@ -190,10 +190,10 @@ export class BitstreamReader {
      * @param options A set of options to control conversion into a string. @see StringEncodingOptions
      * @returns The resulting string
      */
-    readStringSync(length : number, options? : StringEncodingOptions): string {
+    readStringSync(length: number, options?: StringEncodingOptions): string {
         if (!options)
             options = {};
-        
+
         this.ensureNoReadPending();
 
         let buffer = new Uint8Array(length);
@@ -212,7 +212,7 @@ export class BitstreamReader {
         for (let i = 0, max = length; i < max; i += charLength) {
             let char = buffer[i];
             if (charLength === 2)
-                char = (char << 8) | (buffer[i+1] ?? 0);
+                char = (char << 8) | (buffer[i + 1] ?? 0);
 
             if (char === 0) {
                 firstTerminator = i;
@@ -241,7 +241,7 @@ export class BitstreamReader {
      * @param length The number of bits to read
      * @returns The number read from the bitstream
      */
-    peekSync(length : number) {
+    peekSync(length: number) {
         return this.readCoreSync(length, false);
     }
 
@@ -251,19 +251,22 @@ export class BitstreamReader {
      * Skip the given number of bits. 
      * @param length The number of bits to skip
      */
-    skip(length : number) {
+    skip(length: number) {
         this.skippedLength += length;
     }
-    
+
     /**
      * Read an unsigned integer of the given bit length synchronously. If there are not enough 
      * bits available, an error is thrown.
      * 
      * @param length The number of bits to read
+     * @param byteOrder The byte order to use when the length is greater than 8 and is a multiple of 8. 
+     *                  Defaults to MSB (most significant byte). If the length is not a multiple of 8, 
+     *                  this is unused
      * @returns The unsigned integer that was read
      */
-    readSync(length : number): number {
-        return this.readCoreSync(length, true);
+    readSync(length: number, byteOrder?: "big-endian" | "little-endian"): number {
+        return this.readCoreSync(length, true, byteOrder);
     }
 
     /**
@@ -274,7 +277,7 @@ export class BitstreamReader {
      * @param offset The offset into the buffer to write to. Defaults to zero
      * @param length The length of bytes to read. Defaults to the length of the array (sans the offset)
      */
-    *readBytes(buffer : Uint8Array, offset : number = 0, length? : number): Generator<number, any> {
+    *readBytes(buffer: Uint8Array, offset: number = 0, length?: number): Generator<number, any> {
         length ??= buffer.length - offset;
 
         let bitOffset = this._offsetIntoBuffer % 8;
@@ -315,10 +318,10 @@ export class BitstreamReader {
             // Non-byte-aligned, we need to construct bytes using bit-wise operations.
             // readSync is perfect for this 
 
-            for (let i = offset, max = Math.min(buffer.length, offset+length); i < max; ++i) {
+            for (let i = offset, max = Math.min(buffer.length, offset + length); i < max; ++i) {
                 if (!this.isAvailable(8))
                     yield max - i;
-                
+
                 buffer[i] = this.readSync(8);
             }
         }
@@ -334,7 +337,7 @@ export class BitstreamReader {
      * @param offset The offset into the buffer to write to. Defaults to zero
      * @param length The length of bytes to read. Defaults to the length of the array (sans the offset)
      */
-    readBytesSync(buffer : Uint8Array, offset : number = 0, length? : number): Uint8Array {
+    readBytesSync(buffer: Uint8Array, offset: number = 0, length?: number): Uint8Array {
         length ??= buffer.length - offset;
         let gen = this.readBytes(buffer, offset, length);
 
@@ -356,14 +359,14 @@ export class BitstreamReader {
      * @param offset The offset into the buffer to write to. Defaults to zero
      * @param length The length of bytes to read. Defaults to the length of the array (sans the offset)
      */
-    async readBytesBlocking(buffer : Uint8Array, offset : number = 0, length? : number) {
+    async readBytesBlocking(buffer: Uint8Array, offset: number = 0, length?: number) {
         length ??= buffer.length - offset;
         let gen = this.readBytes(buffer, offset, length);
 
         while (true) {
             let result = gen.next();
             if (result.done === false)
-                await this.assure(result.value*8);
+                await this.assure(result.value * 8);
             else
                 break;
         }
@@ -376,11 +379,14 @@ export class BitstreamReader {
      * enough bits available, an error is thrown.
      * 
      * @param length The number of bits to read
+     * @param byteOrder The byte order to use when the length is greater than 8 and is a multiple of 8. 
+     *                  Defaults to MSB (most significant byte). If the length is not a multiple of 8, 
+     *                  this is unused
      * @returns The signed integer that was read
      */
-    readSignedSync(length : number): number {
-        const u = this.readSync(length);
-        const signBit = (2**(length - 1));
+    readSignedSync(length: number, byteOrder: "big-endian" | "little-endian" = 'big-endian'): number {
+        const u = this.readSync(length, byteOrder);
+        const signBit = (2 ** (length - 1));
         const mask = signBit - 1;
         return (u & signBit) === 0 ? u : -((~(u - 1) & mask) >>> 0);
     }
@@ -397,19 +403,22 @@ export class BitstreamReader {
     }
 
 
-    
+
     /**
      * Read an IEEE 754 floating point value with the given bit length (32 or 64). If there are not 
      * enough bits available, an error is thrown.
      * 
      * @param length Must be 32 for 32-bit single-precision or 64 for 64-bit double-precision. All
      *        other values result in TypeError
+     * @param byteOrder The byte order to use when the length is greater than 8 and is a multiple of 8. 
+     *                  Defaults to MSB (most significant byte). If the length is not a multiple of 8, 
+     *                  this is unused
      * @returns The floating point value that was read
      */
-    readFloatSync(length : number): number {
+    readFloatSync(length: number, byteOrder: "big-endian" | "little-endian" = 'big-endian'): number {
         if (length !== 32 && length !== 64)
             throw new TypeError(`Invalid length (${length} bits) Only 4-byte (32 bit / single-precision) and 8-byte (64 bit / double-precision) IEEE 754 values are supported`);
-        
+
         if (!this.isAvailable(length))
             throw new Error(`underrun: Not enough bits are available (requested=${length}, available=${this.bufferedLength}, buffers=${this.buffers.length})`);
 
@@ -418,11 +427,11 @@ export class BitstreamReader {
 
         for (let i = 0, max = buf.byteLength; i < max; ++i)
             view.setUint8(i, this.readSync(8));
-        
+
         if (length === 32)
-            return view.getFloat32(0, false);
+            return view.getFloat32(0, byteOrder === 'little-endian');
         else if (length === 64)
-            return view.getFloat64(0, false);
+            return view.getFloat64(0, byteOrder === 'little-endian');
     }
 
     private readByteAligned(consume: boolean): number {
@@ -460,7 +469,7 @@ export class BitstreamReader {
         }
     }
 
-    private readShortByteAligned(consume: boolean, byteOrder: 'lsb' | 'msb'): number {
+    private readShortByteAligned(consume: boolean, byteOrder: "big-endian" | "little-endian"): number {
         let buffer = this.buffers[this._bufferIndex];
         let bufferOffset = this._offsetIntoBuffer / 8;
         let firstByte = buffer[bufferOffset];
@@ -474,7 +483,7 @@ export class BitstreamReader {
         if (consume)
             this.consume(16);
 
-        if (byteOrder === 'lsb') {
+        if (byteOrder === 'little-endian') {
             let carry = firstByte;
             firstByte = secondByte;
             secondByte = carry;
@@ -483,7 +492,7 @@ export class BitstreamReader {
         return firstByte << 8 | secondByte;
     }
 
-    private readLongByteAligned(consume: boolean, byteOrder: 'lsb' | 'msb'): number {
+    private readLongByteAligned(consume: boolean, byteOrder: "big-endian" | "little-endian"): number {
         let bufferIndex = this._bufferIndex;
         let buffer = this.buffers[bufferIndex];
         let bufferOffset = this._offsetIntoBuffer / 8;
@@ -518,7 +527,7 @@ export class BitstreamReader {
         let highBit = ((firstByte & 0x80) !== 0);
         firstByte &= ~0x80;
 
-        if (byteOrder === 'lsb') {
+        if (byteOrder === 'little-endian') {
             let b1 = fourthByte;
             let b2 = thirdByte;
             let b3 = secondByte;
@@ -533,12 +542,12 @@ export class BitstreamReader {
         let value = firstByte << 24 | secondByte << 16 | thirdByte << 8 | fourthByte;
 
         if (highBit)
-            value += 2**31;
-        
+            value += 2 ** 31;
+
         return value;
     }
 
-    private read3ByteAligned(consume: boolean, byteOrder: 'lsb' | 'msb'): number {
+    private read3ByteAligned(consume: boolean, byteOrder: "big-endian" | "little-endian"): number {
         let bufferIndex = this._bufferIndex;
         let buffer = this.buffers[bufferIndex];
         let bufferOffset = this._offsetIntoBuffer / 8;
@@ -564,7 +573,7 @@ export class BitstreamReader {
         if (consume)
             this.consume(24);
 
-        if (byteOrder === 'lsb') {
+        if (byteOrder === 'little-endian') {
             let carry = firstByte;
             firstByte = thirdByte;
             thirdByte = carry;
@@ -592,9 +601,9 @@ export class BitstreamReader {
      *                  this is unused
      * @returns 
      */
-    private readCoreSync(length : number, consume : boolean, byteOrder: 'msb' | 'lsb' = 'msb'): number {
+    private readCoreSync(length: number, consume: boolean, byteOrder: "big-endian" | "little-endian" = 'big-endian'): number {
         this.ensureNoReadPending();
-        
+
         if (this.available < length)
             throw new Error(`underrun: Not enough bits are available (requested=${length}, available=${this.bufferedLength}, buffers=${this.buffers.length})`);
 
@@ -642,16 +651,16 @@ export class BitstreamReader {
             let bitOffset = offset % 8;
             let bitContribution: number;
             let byte = buffer[byteOffset];
-            
+
             bitContribution = Math.min(8 - bitOffset, remainingLength);
-            
+
             if (useBigInt) {
-                bigValue = (bigValue << BigInt(bitContribution)) 
-                    | ((BigInt(buffer[byteOffset]) >> (BigInt(8) - BigInt(bitContribution) - BigInt(bitOffset))) 
+                bigValue = (bigValue << BigInt(bitContribution))
+                    | ((BigInt(buffer[byteOffset]) >> (BigInt(8) - BigInt(bitContribution) - BigInt(bitOffset)))
                         & BigInt(this.maskOf(bitContribution)));
             } else {
-                value = (value << bitContribution) 
-                    | ((byte >> (8 - bitContribution - bitOffset)) 
+                value = (value << bitContribution)
+                    | ((byte >> (8 - bitContribution - bitOffset))
                         & this.maskOf(bitContribution));
             }
 
@@ -660,7 +669,7 @@ export class BitstreamReader {
             offset += bitContribution;
             remainingLength -= bitContribution | 0;
 
-            if (offset >= buffer.length*8) {
+            if (offset >= buffer.length * 8) {
                 bufferIndex += 1;
                 offset = 0;
             }
@@ -678,10 +687,10 @@ export class BitstreamReader {
     private adjustSkip() {
         if (this.skippedLength <= 0)
             return;
-        
+
         // First, remove any buffers that are completely skipped
-        while (this.buffers && this.skippedLength > this.buffers[0].length*8-this._offsetIntoBuffer) {
-            this.skippedLength -= (this.buffers[0].length*8 - this._offsetIntoBuffer);
+        while (this.buffers && this.skippedLength > this.buffers[0].length * 8 - this._offsetIntoBuffer) {
+            this.skippedLength -= (this.buffers[0].length * 8 - this._offsetIntoBuffer);
             this._offsetIntoBuffer = 0;
             this.buffers.shift();
         }
@@ -703,7 +712,7 @@ export class BitstreamReader {
      * @returns A promise which will resolve when the requested number of bits are available. Rejects if the stream 
      *          ends before the request is satisfied, unless optional parameter is true. 
      */
-    assure(length : number, optional = false) : Promise<void> {
+    assure(length: number, optional = false): Promise<void> {
         this.ensureNoReadPending();
 
         if (this.bufferedLength >= length) {
@@ -725,9 +734,9 @@ export class BitstreamReader {
      * @param length The number of bits to read
      * @returns A promise which resolves to the unsigned integer once it is read
      */
-    read(length : number) : Promise<number> {
+    read(length: number): Promise<number> {
         this.ensureNoReadPending();
-        
+
         if (this.available >= length) {
             return Promise.resolve(this.readSync(length));
         } else {
@@ -740,13 +749,16 @@ export class BitstreamReader {
      * available for the operation. 
      * 
      * @param length The number of bits to read
+     * @param byteOrder The byte order to use when the length is greater than 8 and is a multiple of 8. 
+     *                  Defaults to MSB (most significant byte). If the length is not a multiple of 8, 
+     *                  this is unused
      * @returns A promise which resolves to the signed integer value once it is read
      */
-    readSigned(length : number) : Promise<number> {
+    readSigned(length: number, byteOrder?: "big-endian" | "little-endian"): Promise<number> {
         this.ensureNoReadPending();
-        
+
         if (this.available >= length) {
-            return Promise.resolve(this.readSignedSync(length));
+            return Promise.resolve(this.readSignedSync(length, byteOrder));
         } else {
             return this.block({ length, signed: true });
         }
@@ -782,13 +794,16 @@ export class BitstreamReader {
      * 
      * @param length The number of bits to read (must be 32 for 32-bit single-precision or 
      *                  64 for 64-bit double-precision)
+     * @param byteOrder The byte order to use when the length is greater than 8 and is a multiple of 8. 
+     *                  Defaults to MSB (most significant byte). If the length is not a multiple of 8, 
+     *                  this is unused
      * @returns A promise which resolves to the floating point value once it is read
      */
-    readFloat(length : number) : Promise<number> {
+    readFloat(length: number, byteOrder?: "big-endian" | "little-endian"): Promise<number> {
         this.ensureNoReadPending();
-        
+
         if (this.available >= length) {
-            return Promise.resolve(this.readFloatSync(length));
+            return Promise.resolve(this.readFloatSync(length, byteOrder));
         } else {
             return this.block({ length, float: true });
         }
@@ -800,7 +815,7 @@ export class BitstreamReader {
      * to complete the operation, the operation is delayed until enough bits become available.
      * @returns A promise which resolves iwth the number read from the bitstream
      */
-    async peek(length : number): Promise<number> {
+    async peek(length: number): Promise<number> {
         await this.assure(length);
         return this.peekSync(length);
     }
@@ -809,7 +824,7 @@ export class BitstreamReader {
      * Add a buffer onto the end of the bitstream.
      * @param buffer The buffer to add to the bitstream
      */
-    addBuffer(buffer : Uint8Array) {
+    addBuffer(buffer: Uint8Array) {
         if (this._ended)
             throw new Error(`Cannot add buffers to a reader which has been marked as ended without calling reset() first`);
 

@@ -10,8 +10,8 @@ import { summarizeField } from "./utils";
  * Serializes numbers to/from bitstreams
  */
 export class NumberSerializer implements Serializer {
-    *read(reader: BitstreamReader, type : any, parent : BitstreamElement, field: FieldDefinition): Generator<IncompleteReadResult, any> {
-        let length : number;
+    *read(reader: BitstreamReader, type: any, parent: BitstreamElement, field: FieldDefinition): Generator<IncompleteReadResult, any> {
+        let length: number;
         try {
             length = resolveLength(field.length, parent, field);
         } catch (e) {
@@ -20,23 +20,23 @@ export class NumberSerializer implements Serializer {
 
         if (!reader.isAvailable(length))
             yield { remaining: length, contextHint: () => summarizeField(field) };
-        
+
         let format = field.options?.number?.format ?? 'unsigned';
         if (format === 'unsigned')
-            return reader.readSync(length);
+            return reader.readSync(length, field.options?.number?.byteOrder);
         else if (format === 'signed')
-            return reader.readSignedSync(length);
+            return reader.readSignedSync(length, field.options?.number?.byteOrder);
         else if (format === 'float')
-            return reader.readFloatSync(length);
+            return reader.readFloatSync(length, field.options?.number?.byteOrder);
         else
             throw new TypeError(`Unsupported number format '${format}'`);
     }
 
-    write(writer: BitstreamWriter, type : any, instance: any, field: FieldDefinition, value: any) {
+    write(writer: BitstreamWriter, type: any, instance: any, field: FieldDefinition, value: any) {
         if (value === undefined)
             value = 0;
 
-        let length : number;
+        let length: number;
         try {
             length = resolveLength(field.length, instance, field);
         } catch (e) {
@@ -46,11 +46,11 @@ export class NumberSerializer implements Serializer {
         let format = field.options?.number?.format ?? 'unsigned';
 
         if (format === 'unsigned')
-            writer.write(length, value);
+            writer.write(length, value, field.options?.number?.byteOrder);
         else if (format === 'signed')
-            writer.writeSigned(length, value);
+            writer.writeSigned(length, value, field.options?.number?.byteOrder);
         else if (format === 'float')
-            writer.writeFloat(length, value);
+            writer.writeFloat(length, value, field.options?.number?.byteOrder);
         else
             throw new TypeError(`Unsupported number format '${format}'`);
     }

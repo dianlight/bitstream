@@ -10,13 +10,13 @@ export class BitstreamWriter {
      * @param stream The writable stream to write to
      * @param bufferSize The number of bytes to buffer before flushing onto the writable
      */
-    constructor(public stream : Writable, readonly bufferSize = 1) {
+    constructor(public stream: Writable, readonly bufferSize = 1) {
         this.buffer = new Uint8Array(bufferSize);
     }
 
-    private pendingByte : bigint = BigInt(0);
-    private pendingBits : number = 0;
-    private buffer : Uint8Array;
+    private pendingByte: bigint = BigInt(0);
+    private pendingBits: number = 0;
+    private buffer: Uint8Array;
     private bufferedBytes = 0;
     private _offset = 0;
 
@@ -59,7 +59,7 @@ export class BitstreamWriter {
             this.pendingByte = BigInt(0);
         }
     }
-    
+
     flush() {
         if (this.bufferedBytes > 0) {
             this.stream.write(Buffer.from(this.buffer.slice(0, this.bufferedBytes)));
@@ -76,7 +76,7 @@ export class BitstreamWriter {
      * @param value The string to decode and write
      * @param encoding The encoding to use when writing the string. Defaults to utf-8
      */
-    writeString(byteCount : number, value : string, encoding : string = 'utf-8') {
+    writeString(byteCount: number, value: string, encoding: string = 'utf-8') {
         if (encoding === 'utf-8') {
             let buffer = new Uint8Array(byteCount);
             let strBuf = this.textEncoder.encode(value);
@@ -100,7 +100,7 @@ export class BitstreamWriter {
      * @param buffer The buffer to write
      * @deprecated Use writeBytes() instead
      */
-    writeBuffer(buffer : Uint8Array) {
+    writeBuffer(buffer: Uint8Array) {
         this.writeBytes(buffer);
     }
 
@@ -110,7 +110,7 @@ export class BitstreamWriter {
      * a set of bytes at a non=zero bit offset if you wish.
      * @param chunk The buffer to write
      */
-    writeBytes(chunk : Uint8Array, offset = 0, length? : number) {
+    writeBytes(chunk: Uint8Array, offset = 0, length?: number) {
         length ??= chunk.length - offset;
 
         // Fast path: Byte-aligned
@@ -128,11 +128,11 @@ export class BitstreamWriter {
             return;
         }
 
-        for (let i = offset, max = Math.min(chunk.length, offset+length); i < max; ++i)
+        for (let i = offset, max = Math.min(chunk.length, offset + length); i < max; ++i)
             this.write(8, chunk[i]);
     }
 
-    private min(a : bigint, b : bigint) {
+    private min(a: bigint, b: bigint) {
         if (a < b)
             return a;
         else
@@ -145,10 +145,10 @@ export class BitstreamWriter {
      * @param length The number of bits to write
      * @param value The number to write
      */
-    write(length : number, value : number) {
+    write(length: number, value: number, byteOrder: "big-endian" | "little-endian" = 'big-endian') {
         if (value === void 0 || value === null)
             value = 0;
-        
+
         value = Number(value);
 
         if (Number.isNaN(value))
@@ -157,9 +157,11 @@ export class BitstreamWriter {
             throw new Error(`Cannot write to bitstream: Value ${value} must be finite`);
 
         let valueN = BigInt(value % Math.pow(2, length));
-        
+
         let remainingLength = length;
 
+        // FIXME: Support little-endian
+        if (byteOrder === 'little-endian') throw new Error("Little-endian not yet supported in write!");
         while (remainingLength > 0) {
             let shift = BigInt(8 - this.pendingBits - remainingLength);
             let contribution = (shift >= 0 ? (valueN << shift) : (valueN >> -shift));
@@ -168,7 +170,7 @@ export class BitstreamWriter {
             this.pendingByte = this.pendingByte | contribution;
             this.pendingBits += writtenLength;
             this._offset += writtenLength;
-            
+
             remainingLength -= writtenLength;
             valueN = valueN % BigInt(Math.pow(2, remainingLength));
 
@@ -182,13 +184,16 @@ export class BitstreamWriter {
         }
     }
 
-    writeSigned(length : number, value : number) {
+    writeSigned(length: number, value: number, byteOrder: "big-endian" | "little-endian" = 'big-endian') {
         if (value === undefined || value === null)
             value = 0;
-        
+
+        // FIXME: Support little-endian
+        if (byteOrder === 'little-endian') throw new Error("Little-endian is not yet supported in write!");
+
         const originalValue = value;
-        const max = 2**(length - 1) - 1; // ie 127
-        const min = -(2**(length - 1)); // ie -128
+        const max = 2 ** (length - 1) - 1; // ie 127
+        const min = -(2 ** (length - 1)); // ie -128
 
         value = Number(value);
 
@@ -200,14 +205,18 @@ export class BitstreamWriter {
             throw new TypeError(`Cannot represent ${value} in I${length} format: Value too large (min=${min}, max=${max})`);
         if (value < min)
             throw new TypeError(`Cannot represent ${value} in I${length} format: Negative value too small (min=${min}, max=${max})`);
-        
+
         return this.write(length, value >= 0 ? value : (~(-value) + 1) >>> 0);
     }
 
-    writeFloat(length : number, value : number) {
+    writeFloat(length: number, value: number, byteOrder: "big-endian" | "little-endian" = 'big-endian') {
         if (length !== 32 && length !== 64)
             throw new TypeError(`Invalid length (${length} bits) Only 4-byte (32 bit / single-precision) and 8-byte (64 bit / double-precision) IEEE 754 values are supported`);
-        
+
+        // FIXME: Support little-endian
+        if (byteOrder === 'little-endian') throw new Error("Little-endian is not yet supported in write!");
+
+
         let buf = new ArrayBuffer(length / 8);
         let view = new DataView(buf);
 
@@ -232,15 +241,15 @@ export class BitstreamMeasurer extends BitstreamWriter {
 
     bitLength = 0;
 
-    writeString(byteCount : number, value : string, encoding : string = 'utf-8') {
+    writeString(byteCount: number, value: string, encoding: string = 'utf-8') {
         this.bitLength += byteCount * 8;
     }
 
-    writeBuffer(buffer : Uint8Array) {
+    writeBuffer(buffer: Uint8Array) {
         this.bitLength += buffer.length * 8;
     }
 
-    write(length : number, value : number) {
+    write(length: number, value: number) {
         this.bitLength += length;
     }
 }
