@@ -497,53 +497,59 @@ export class BitstreamReader {
         let buffer = this.buffers[bufferIndex];
         let bufferOffset = this._offsetIntoBuffer / 8;
 
-        let firstByte = buffer[bufferOffset++];
-        if (bufferOffset >= buffer.length) {
-            buffer = this.buffers[++bufferIndex];
-            bufferOffset = 0;
-        }
+        const dv = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 
-        let secondByte = buffer[bufferOffset++];
-        if (bufferOffset >= buffer.length) {
-            buffer = this.buffers[++bufferIndex];
-            bufferOffset = 0;
-        }
-
-        let thirdByte = buffer[bufferOffset++];
-        if (bufferOffset >= buffer.length) {
-            buffer = this.buffers[++bufferIndex];
-            bufferOffset = 0;
-        }
-
-        let fourthByte = buffer[bufferOffset++];
-        if (bufferOffset >= buffer.length) {
-            buffer = this.buffers[++bufferIndex];
-            bufferOffset = 0;
-        }
-
+        const value = dv.getUint32(bufferOffset, byteOrder === 'little-endian');
+        bufferOffset += 4;
+        /*
+                let firstByte = buffer[bufferOffset++];
+                if (bufferOffset >= buffer.length) {
+                    buffer = this.buffers[++bufferIndex];
+                    bufferOffset = 0;
+                }
+        
+                let secondByte = buffer[bufferOffset++];
+                if (bufferOffset >= buffer.length) {
+                    buffer = this.buffers[++bufferIndex];
+                    bufferOffset = 0;
+                }
+        
+                let thirdByte = buffer[bufferOffset++];
+                if (bufferOffset >= buffer.length) {
+                    buffer = this.buffers[++bufferIndex];
+                    bufferOffset = 0;
+                }
+        
+                let fourthByte = buffer[bufferOffset++];
+                if (bufferOffset >= buffer.length) {
+                    buffer = this.buffers[++bufferIndex];
+                    bufferOffset = 0;
+                }
+        */
         if (consume)
             this.consume(32);
-
-        let highBit = ((firstByte & 0x80) !== 0);
-        firstByte &= ~0x80;
-
-        if (byteOrder === 'little-endian') {
-            let b1 = fourthByte;
-            let b2 = thirdByte;
-            let b3 = secondByte;
-            let b4 = firstByte;
-
-            firstByte = b1;
-            secondByte = b2;
-            thirdByte = b3;
-            fourthByte = b4;
-        }
-
-        let value = firstByte << 24 | secondByte << 16 | thirdByte << 8 | fourthByte;
-
-        if (highBit)
-            value += 2 ** 31;
-
+        /*
+                let highBit = ((firstByte & 0x80) !== 0);
+                firstByte &= ~0x80;
+        
+                if (byteOrder === 'little-endian') {
+                    let b1 = fourthByte;
+                    let b2 = thirdByte;
+                    let b3 = secondByte;
+                    let b4 = firstByte;
+        
+                    firstByte = b1;
+                    secondByte = b2;
+                    thirdByte = b3;
+                    fourthByte = b4;
+                }
+        
+                let value = firstByte << 24 | secondByte << 16 | thirdByte << 8 | fourthByte;
+        
+                if (highBit)
+                    value += 2 ** 31;
+        
+                */
         return value;
     }
 
@@ -654,6 +660,20 @@ export class BitstreamReader {
 
             bitContribution = Math.min(8 - bitOffset, remainingLength);
 
+            // if (useBigInt) {
+            //     const dv = new DataView(new ArrayBuffer(8));
+            //     dv.setBigUint64(0, (bigValue << BigInt(bitContribution))
+            //         | ((BigInt(buffer[byteOffset]) >> (BigInt(8) - BigInt(bitContribution) - BigInt(bitOffset)))
+            //             & BigInt(this.maskOf(bitContribution))), false);
+            //     bigValue = dv.getBigUint64(0, byteOrder == 'little-endian');
+            // } else {
+            //     const dv = new DataView(new ArrayBuffer(4));
+            //     dv.setUint32(0, (value << bitContribution)
+            //         | ((byte >> (8 - bitContribution - bitOffset))
+            //             & this.maskOf(bitContribution)), false);
+            //     value = dv.getUint32(0, byteOrder == 'little-endian');
+            // }
+
             if (useBigInt) {
                 bigValue = (bigValue << BigInt(bitContribution))
                     | ((BigInt(buffer[byteOffset]) >> (BigInt(8) - BigInt(bitContribution) - BigInt(bitOffset)))
@@ -732,13 +752,16 @@ export class BitstreamReader {
      * available for the operation. 
      * 
      * @param length The number of bits to read
+     * @param byteOrder The byte order to use when the length is greater than 8 and is a multiple of 8. 
+     *                  Defaults to MSB (most significant byte). If the length is not a multiple of 8, 
+     *                  this is unused
      * @returns A promise which resolves to the unsigned integer once it is read
      */
-    read(length: number): Promise<number> {
+    read(length: number, byteOrder?: "big-endian" | "little-endian"): Promise<number> {
         this.ensureNoReadPending();
 
         if (this.available >= length) {
-            return Promise.resolve(this.readSync(length));
+            return Promise.resolve(this.readSync(length, byteOrder));
         } else {
             return this.block({ length });
         }

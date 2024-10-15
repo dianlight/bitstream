@@ -145,7 +145,7 @@ export class BitstreamWriter {
      * @param length The number of bits to write
      * @param value The number to write
      */
-    write(length: number, value: number, byteOrder: "big-endian" | "little-endian" = 'big-endian') {
+    write(length: number, value: number | bigint, byteOrder: "big-endian" | "little-endian" = 'big-endian') {
         if (value === void 0 || value === null)
             value = 0;
 
@@ -156,40 +156,53 @@ export class BitstreamWriter {
         if (!Number.isFinite(value))
             throw new Error(`Cannot write to bitstream: Value ${value} must be finite`);
 
-        let valueN = BigInt(value % Math.pow(2, length));
+        if (byteOrder === 'little-endian') {
+            if (length != 16 && length != 32) throw new Error("Little-endian is only supported for 16,32");
 
-        let remainingLength = length;
+            let buf = new ArrayBuffer(length / 8);
+            let view = new DataView(buf);
 
-        // FIXME: Support little-endian
-        if (byteOrder === 'little-endian') throw new Error("Little-endian not yet supported in write!");
-        while (remainingLength > 0) {
-            let shift = BigInt(8 - this.pendingBits - remainingLength);
-            let contribution = (shift >= 0 ? (valueN << shift) : (valueN >> -shift));
-            let writtenLength = Number(shift >= 0 ? remainingLength : this.min(-shift, BigInt(8 - this.pendingBits)));
+            if (length === 16)
+                view.setUint16(0, value, byteOrder === 'little-endian');
+            else if (length === 32)
+                view.setUint32(0, value, byteOrder === 'little-endian');
+            else if (length === 64)
+                view.setBigUint64(0, BigInt(value), byteOrder === 'little-endian')
 
-            this.pendingByte = this.pendingByte | contribution;
-            this.pendingBits += writtenLength;
-            this._offset += writtenLength;
+            for (let i = 0, max = buf.byteLength; i < max; ++i)
+                this.write(8, view.getUint8(i));
+        } else {
 
-            remainingLength -= writtenLength;
-            valueN = valueN % BigInt(Math.pow(2, remainingLength));
+            let valueN = BigInt(value % Math.pow(2, length));
 
-            if (this.pendingBits === 8) {
-                this.finishByte();
+            let remainingLength = length;
 
-                if (this.bufferedBytes >= this.buffer.length) {
-                    this.flush();
+            while (remainingLength > 0) {
+                let shift = BigInt(8 - this.pendingBits - remainingLength);
+                let contribution = (shift >= 0 ? (valueN << shift) : (valueN >> -shift));
+                let writtenLength = Number(shift >= 0 ? remainingLength : this.min(-shift, BigInt(8 - this.pendingBits)));
+
+                this.pendingByte = this.pendingByte | contribution;
+                this.pendingBits += writtenLength;
+                this._offset += writtenLength;
+
+                remainingLength -= writtenLength;
+                valueN = valueN % BigInt(Math.pow(2, remainingLength));
+
+                if (this.pendingBits === 8) {
+                    this.finishByte();
+
+                    if (this.bufferedBytes >= this.buffer.length) {
+                        this.flush();
+                    }
                 }
             }
         }
     }
 
-    writeSigned(length: number, value: number, byteOrder: "big-endian" | "little-endian" = 'big-endian') {
+    writeSigned(length: number, value: number | bigint, byteOrder: "big-endian" | "little-endian" = 'big-endian') {
         if (value === undefined || value === null)
             value = 0;
-
-        // FIXME: Support little-endian
-        if (byteOrder === 'little-endian') throw new Error("Little-endian is not yet supported in write!");
 
         const originalValue = value;
         const max = 2 ** (length - 1) - 1; // ie 127
@@ -206,24 +219,37 @@ export class BitstreamWriter {
         if (value < min)
             throw new TypeError(`Cannot represent ${value} in I${length} format: Negative value too small (min=${min}, max=${max})`);
 
-        return this.write(length, value >= 0 ? value : (~(-value) + 1) >>> 0);
+        if (byteOrder === 'little-endian') {
+            if (length != 16 && length != 32 && length != 64) throw new Error("Little-endian is only supported for 16,32");
+
+            let buf = new ArrayBuffer(length / 8);
+            let view = new DataView(buf);
+
+            if (length === 16)
+                view.setInt16(0, value, byteOrder === 'little-endian');
+            else if (length === 32)
+                view.setInt32(0, value, byteOrder === 'little-endian');
+            else if (length === 64)
+                view.setBigInt64(0, BigInt(value), byteOrder === 'little-endian');
+
+            for (let i = 0, max = buf.byteLength; i < max; ++i)
+                this.write(8, view.getUint8(i));
+        } else {
+            return this.write(length, value >= 0 ? value : (~(-value) + 1) >>> 0);
+        }
     }
 
     writeFloat(length: number, value: number, byteOrder: "big-endian" | "little-endian" = 'big-endian') {
         if (length !== 32 && length !== 64)
             throw new TypeError(`Invalid length (${length} bits) Only 4-byte (32 bit / single-precision) and 8-byte (64 bit / double-precision) IEEE 754 values are supported`);
 
-        // FIXME: Support little-endian
-        if (byteOrder === 'little-endian') throw new Error("Little-endian is not yet supported in write!");
-
-
         let buf = new ArrayBuffer(length / 8);
         let view = new DataView(buf);
 
         if (length === 32)
-            view.setFloat32(0, value);
+            view.setFloat32(0, value, byteOrder === 'little-endian');
         else if (length === 64)
-            view.setFloat64(0, value);
+            view.setFloat64(0, value, byteOrder === 'little-endian');
 
         for (let i = 0, max = buf.byteLength; i < max; ++i)
             this.write(8, view.getUint8(i));

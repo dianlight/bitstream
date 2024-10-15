@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { describe } from "razmin";
+import { describe, skip } from "razmin";
 import { BitstreamReader } from "./reader";
 
 describe('BitstreamReader', it => {
@@ -343,6 +343,52 @@ describe('BitstreamReader', it => {
         expect(bitstream.readSync(4)).to.equal(0b0100);
     });
 
+    it('.readSync() correctly handles unsigned integers', () => {
+        let bitstream = new BitstreamReader();
+
+        bitstream.addBuffer(Buffer.from([0xFB])); expect(bitstream.readSync(8)).to.equal(0xFB);
+        bitstream.addBuffer(Buffer.from([5])); expect(bitstream.readSync(8)).to.equal(5);
+        bitstream.addBuffer(Buffer.from([0])); expect(bitstream.readSync(8)).to.equal(0);
+
+        bitstream.addBuffer(Buffer.from([0xFC, 0x0A])); expect(bitstream.readSync(16)).to.equal(0xFC0A);
+        bitstream.addBuffer(Buffer.from([0x03, 0xF6])); expect(bitstream.readSync(16)).to.equal(0x03F6);
+        bitstream.addBuffer(Buffer.from([0, 0])); expect(bitstream.readSync(16)).to.equal(0);
+
+        bitstream.addBuffer(Buffer.from([0x0A, 0xFC])); expect(bitstream.readSync(16, 'little-endian')).to.equal(0xFC0A);
+        bitstream.addBuffer(Buffer.from([0xF6, 0x03])); expect(bitstream.readSync(16, 'little-endian')).to.equal(0x03F6);
+        bitstream.addBuffer(Buffer.from([0, 0])); expect(bitstream.readSync(16, 'little-endian')).to.equal(0);
+
+        bitstream.addBuffer(Buffer.from([0xFF, 0xFE, 0x70, 0x40])); expect(bitstream.readSync(32)).to.equal(0xFFFE7040);
+        bitstream.addBuffer(Buffer.from([0x00, 0x01, 0x8F, 0xC0])); expect(bitstream.readSync(32)).to.equal(0x00018FC0);
+        bitstream.addBuffer(Buffer.from([0, 0, 0, 0])); expect(bitstream.readSync(32)).to.equal(0);
+
+        bitstream.addBuffer(Buffer.from([0x40, 0x70, 0xFE, 0xFF])); expect(bitstream.readSync(32, 'little-endian')).to.equal(0xFFFE7040);
+        bitstream.addBuffer(Buffer.from([0xC0, 0x8F, 0x01, 0x00])); expect(bitstream.readSync(32, 'little-endian')).to.equal(0x00018FC0);
+        bitstream.addBuffer(Buffer.from([0, 0, 0, 0])); expect(bitstream.readSync(32)).to.equal(0);
+    });
+    it('.read() correctly handles unsigned integers', async () => {
+        let bitstream = new BitstreamReader();
+        bitstream.addBuffer(Buffer.from([0xFB])); expect(await bitstream.read(8)).to.equal(0xFB);
+        bitstream.addBuffer(Buffer.from([5])); expect(await bitstream.read(8)).to.equal(5);
+        bitstream.addBuffer(Buffer.from([0])); expect(await bitstream.read(8)).to.equal(0);
+
+        bitstream.addBuffer(Buffer.from([0x0A, 0xFC])); expect(await bitstream.read(16)).to.equal(0x0AFC);
+        bitstream.addBuffer(Buffer.from([0xF6, 0x03])); expect(await bitstream.read(16)).to.equal(0xF603);
+        bitstream.addBuffer(Buffer.from([0, 0])); expect(await bitstream.read(16)).to.equal(0);
+
+        bitstream.addBuffer(Buffer.from([0xFC, 0x0A])); expect(await bitstream.read(16, 'little-endian')).to.equal(0x0AFC);
+        bitstream.addBuffer(Buffer.from([0x03, 0xF6])); expect(await bitstream.read(16, 'little-endian')).to.equal(0xF603);
+        bitstream.addBuffer(Buffer.from([0, 0])); expect(await bitstream.read(16, 'little-endian')).to.equal(0);
+
+        bitstream.addBuffer(Buffer.from([0xFF, 0xFE, 0x70, 0x40])); expect(await bitstream.read(32)).to.equal(0xFFFE7040);
+        bitstream.addBuffer(Buffer.from([0x00, 0x01, 0x8F, 0xC0])); expect(await bitstream.read(32)).to.equal(0x00018FC0);
+        bitstream.addBuffer(Buffer.from([0, 0, 0, 0])); expect(await bitstream.read(32)).to.equal(0);
+
+        bitstream.addBuffer(Buffer.from([0x40, 0x70, 0xFE, 0xFF])); expect(await bitstream.read(32, 'little-endian')).to.equal(0xFFFE7040);
+        bitstream.addBuffer(Buffer.from([0xC0, 0x8F, 0x01, 0x00])); expect(await bitstream.read(32, 'little-endian')).to.equal(0x00018FC0);
+        bitstream.addBuffer(Buffer.from([0, 0, 0, 0])); expect(await bitstream.read(32)).to.equal(0);
+    });
+
     it('.readSignedSync() correctly handles signed integers', () => {
         let bitstream = new BitstreamReader();
 
@@ -354,11 +400,17 @@ describe('BitstreamReader', it => {
         bitstream.addBuffer(Buffer.from([0x03, 0xF6])); expect(bitstream.readSignedSync(16)).to.equal(1014);
         bitstream.addBuffer(Buffer.from([0, 0])); expect(bitstream.readSignedSync(16)).to.equal(0);
 
+        bitstream.addBuffer(Buffer.from([0x0A, 0xFC])); expect(bitstream.readSignedSync(16, 'little-endian')).to.equal(-1014);
+        bitstream.addBuffer(Buffer.from([0xF6, 0x03])); expect(bitstream.readSignedSync(16, 'little-endian')).to.equal(1014);
+        bitstream.addBuffer(Buffer.from([0, 0])); expect(bitstream.readSignedSync(16, 'big-endian')).to.equal(0);
+
         bitstream.addBuffer(Buffer.from([0xFF, 0xFE, 0x70, 0x40])); expect(bitstream.readSignedSync(32)).to.equal(-102336);
         bitstream.addBuffer(Buffer.from([0x00, 0x01, 0x8F, 0xC0])); expect(bitstream.readSignedSync(32)).to.equal(102336);
         bitstream.addBuffer(Buffer.from([0, 0, 0, 0])); expect(bitstream.readSignedSync(32)).to.equal(0);
 
-        bitstream.addBuffer(Buffer.from([0xFF, 0x01])); expect(bitstream.readSignedSync(16, 'little-endian')).to.equal(0x01FF);
+        bitstream.addBuffer(Buffer.from([0x40, 0x70, 0xFE, 0xFF])); expect(bitstream.readSignedSync(32, 'little-endian')).to.equal(-102336);
+        bitstream.addBuffer(Buffer.from([0xC0, 0x8F, 0x01, 0x00])); expect(bitstream.readSignedSync(32, 'little-endian')).to.equal(102336);
+        bitstream.addBuffer(Buffer.from([0, 0, 0, 0])); expect(bitstream.readSignedSync(32, 'little-endian')).to.equal(0);
     });
     it('.readSigned() correctly handles signed integers', async () => {
         let bitstream = new BitstreamReader();
@@ -370,11 +422,17 @@ describe('BitstreamReader', it => {
         bitstream.addBuffer(Buffer.from([0x03, 0xF6])); expect(await bitstream.readSigned(16)).to.equal(1014);
         bitstream.addBuffer(Buffer.from([0, 0])); expect(await bitstream.readSigned(16)).to.equal(0);
 
+        bitstream.addBuffer(Buffer.from([0xFC, 0x0A].reverse())); expect(await bitstream.readSigned(16, 'little-endian')).to.equal(-1014);
+        bitstream.addBuffer(Buffer.from([0x03, 0xF6].reverse())); expect(await bitstream.readSigned(16, 'little-endian')).to.equal(1014);
+        bitstream.addBuffer(Buffer.from([0, 0])); expect(await bitstream.readSigned(16, 'little-endian')).to.equal(0);
+
         bitstream.addBuffer(Buffer.from([0xFF, 0xFE, 0x70, 0x40])); expect(await bitstream.readSigned(32)).to.equal(-102336);
         bitstream.addBuffer(Buffer.from([0x00, 0x01, 0x8F, 0xC0])); expect(await bitstream.readSigned(32)).to.equal(102336);
         bitstream.addBuffer(Buffer.from([0, 0, 0, 0])); expect(await bitstream.readSigned(32)).to.equal(0);
 
-        bitstream.addBuffer(Buffer.from([0xFF, 0x01])); expect(await bitstream.readSigned(16, 'little-endian')).to.equal(0x01FF);
+        bitstream.addBuffer(Buffer.from([0x40, 0x70, 0xFE, 0xFF])); expect(await bitstream.readSigned(32, 'little-endian')).to.equal(-102336);
+        bitstream.addBuffer(Buffer.from([0xC0, 0x8F, 0x01, 0x00])); expect(await bitstream.readSigned(32, 'little-endian')).to.equal(102336);
+        bitstream.addBuffer(Buffer.from([0, 0, 0, 0])); expect(await bitstream.readSigned(32, 'little-endian')).to.equal(0);
     });
     it('.readSigned() can wait until data is available', async () => {
         let bitstream = new BitstreamReader();
@@ -816,6 +874,18 @@ describe('BitstreamReader (generated)', it => {
                 expect(reader.readSync(size), `Test number #${i} (${num}) should have been read properly`).to.equal(num);
             }
         });
+        if (size > 8 && (size % 8 == 0) && size <= 32) it(`reads ${size}bit values correctly (LE)`, async () => {
+            let buf = new ArrayBuffer(8);
+            let view = new DataView(buf);
+
+            for (let i = 0; i < 10; ++i) {
+                let num = Math.floor(Math.random() * 2 ** size);
+                view.setBigUint64(0, BigInt(num), true);
+                let reader = new BitstreamReader();
+                reader.addBuffer(new Uint8Array(buf));
+                expect(reader.readSync(size, 'little-endian'), `Test number #${i} (${num}) should have been read properly`).to.equal(num);
+            }
+        });
     }
 
     for (let size = 1; size < 52; ++size) {
@@ -833,6 +903,25 @@ describe('BitstreamReader (generated)', it => {
                 expect(reader.readSync(size), `Test number #${i} (${num}) should have been read properly`).to.equal(num);
             }
         });
+        if (size > 8 && (size % 8 == 0) && size <= 32) it(`reads cross-byte ${size}bit values correctly [1-bit offset] LE`, async () => {
+            let buf = new ArrayBuffer(8);
+            let view = new DataView(buf);
+
+            for (let i = 0; i < 10; ++i) {
+                let num = Math.floor(Math.random() * 2 ** size);
+                view.setBigUint64(0, BigInt(num), true);
+                let reader = new BitstreamReader();
+                let shifted = new Uint8Array(buf).reduce((prev, cur, index, arr) => {
+                    prev[index] = cur >> 1 | prev[index];
+                    prev[index + 1] = cur << 7;
+                    //                    console.log(`Index ${index} ${cur.toString(2).padStart(8, '0')} -> ${prev[index].toString(2).padStart(8, '0')}:${prev[index + 1].toString(2).padStart(8, '0')}`)
+                    return prev;
+                }, new Uint8Array(buf.byteLength + 1));
+                reader.addBuffer(shifted);
+                reader.readSync(1);
+                expect(reader.readSync(size, 'little-endian'), `Test number #${i} (${num}) should have been read properly`).to.equal(num);
+            }
+        });
     }
 
     for (let size = 1; size < 49; ++size) {
@@ -848,6 +937,25 @@ describe('BitstreamReader (generated)', it => {
                 reader.addBuffer(new Uint8Array(buf));
                 reader.readSync(offset - 4);
                 expect(reader.readSync(size), `Test number #${i} (${num}) should have been read properly`).to.equal(num);
+            }
+        });
+        if (size > 8 && (size % 8 == 0) && size <= 32) it(`reads cross-byte ${size}bit values correctly [4-bit offset] LE`, async () => {
+            let buf = new ArrayBuffer(8);
+            let view = new DataView(buf);
+
+            for (let i = 0; i < 10; ++i) {
+                let num = Math.floor(Math.random() * 2 ** size);
+                view.setBigUint64(0, BigInt(num), true);
+                let reader = new BitstreamReader();
+                let shifted = new Uint8Array(buf).reduce((prev, cur, index, arr) => {
+                    prev[index] = cur >> 4 | prev[index];
+                    prev[index + 1] = cur << 4;
+                    //                    console.log(`Index ${index} ${cur.toString(2).padStart(8, '0')} -> ${prev[index].toString(2).padStart(8, '0')}:${prev[index + 1].toString(2).padStart(8, '0')}`)
+                    return prev;
+                }, new Uint8Array(buf.byteLength + 1));
+                reader.addBuffer(shifted);
+                reader.readSync(4);
+                expect(reader.readSync(size, 'little-endian'), `Test number #${i} (${num}) should have been read properly`).to.equal(num);
             }
         });
     }

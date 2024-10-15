@@ -4,8 +4,8 @@ import { BitstreamWriter } from "./writer";
 
 describe('BitstreamWriter', it => {
     it('works for bit writes', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream);
         writer.write(1, 0b1);
         writer.write(1, 0b0);
@@ -28,8 +28,8 @@ describe('BitstreamWriter', it => {
         expect(bufs[1][0]).to.equal(0b01100110);
     });
     it('works for short writes', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream);
         writer.write(3, 0b010);
         writer.write(3, 0b101);
@@ -38,16 +38,16 @@ describe('BitstreamWriter', it => {
         expect(bufs[0][0]).to.equal(0b01010111);
     });
     it('works for full-byte writes', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream);
         writer.write(8, 0b01010111);
         expect(bufs.length).to.equal(1);
         expect(bufs[0][0]).to.equal(0b01010111);
     });
     it('works for offset full-byte writes', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream);
         writer.write(4, 0b1111);
         writer.write(8, 0b01010111);
@@ -57,8 +57,8 @@ describe('BitstreamWriter', it => {
         expect(bufs[1][0]).to.equal(0b01111111);
     });
     it('works for large writes (1)', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream);
         writer.write(16, 0b1111111100000000);
         expect(bufs.length).to.equal(2);
@@ -66,17 +66,35 @@ describe('BitstreamWriter', it => {
         expect(bufs[1][0]).to.equal(0b00000000);
     });
     it('works for large writes (2)', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream);
         writer.write(16, 0b0101010110101010);
         expect(bufs.length).to.equal(2);
         expect(bufs[0][0]).to.equal(0b01010101);
         expect(bufs[1][0]).to.equal(0b10101010);
     });
+    it('works for large writes (1) LE', () => {
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
+        let writer = new BitstreamWriter(fakeStream);
+        writer.write(16, 0b1111111100000000, 'little-endian');
+        expect(bufs.length).to.equal(2);
+        expect(bufs[0][0]).to.equal(0b00000000);
+        expect(bufs[1][0]).to.equal(0b11111111);
+    });
+    it('works for large writes (2) LE', () => {
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
+        let writer = new BitstreamWriter(fakeStream);
+        writer.write(16, 0b0101010110101010, 'little-endian');
+        expect(bufs.length).to.equal(2);
+        expect(bufs[0][0]).to.equal(0b10101010);
+        expect(bufs[1][0]).to.equal(0b01010101);
+    });
     it('works for offset large writes', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream);
         writer.write(4, 0b1111);
         writer.write(16, 0b0101010110101010);
@@ -87,9 +105,22 @@ describe('BitstreamWriter', it => {
         expect(bufs[1][0]).to.equal(0b01011010);
         expect(bufs[2][0]).to.equal(0b10101111);
     });
+    it('works for offset large writes LE', () => {
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
+        let writer = new BitstreamWriter(fakeStream);
+        writer.write(4, 0b1111);
+        writer.write(16, 0b0101010110101010, 'little-endian');
+        writer.write(4, 0b1111);
+
+        expect(bufs.length).to.equal(3);
+        expect(bufs[0][0]).to.equal(0b11111010);
+        expect(bufs[1][0]).to.equal(0b10100101);
+        expect(bufs[2][0]).to.equal(0b01011111);
+    });
     it('respects configured buffer size', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 2);
         writer.write(8, 0b11111100);
         expect(bufs.length).to.equal(0);
@@ -108,8 +139,8 @@ describe('BitstreamWriter', it => {
         expect(bufs[1][1]).to.equal(0b11111111);
     });
     it('throws when writing NaN as an unsigned integer', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 2);
 
         let caught;
@@ -121,8 +152,8 @@ describe('BitstreamWriter', it => {
         expect(caught, `Expected write(8, NaN) to throw an exception`).to.exist;
     });
     it('throws when writing Infinity as an unsigned integer', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 2);
 
         let caught;
@@ -133,8 +164,8 @@ describe('BitstreamWriter', it => {
         expect(caught, `Expected write(8, Infinity) to throw an exception`).to.exist;
     });
     it('throws when writing NaN as a signed integer', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 2);
 
         let caught;
@@ -145,8 +176,8 @@ describe('BitstreamWriter', it => {
         expect(caught, `Expected write(8, NaN) to throw an exception`).to.exist;
     });
     it('throws when writing values outside of range', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 2);
 
         writer.writeSigned(8, 0);
@@ -157,14 +188,14 @@ describe('BitstreamWriter', it => {
         try {
             writer.writeSigned(8, 200);
         } catch (e) { caught = e; }
-        
+
         expect(caught, `Expected writeSigned(8, 200) to throw an exception`).to.exist;
         caught = undefined;
 
         try {
             writer.writeSigned(8, 128);
         } catch (e) { caught = e; }
-        
+
         expect(caught, `Expected writeSigned(8, 128) to throw an exception`).to.exist;
         caught = undefined;
 
@@ -178,7 +209,7 @@ describe('BitstreamWriter', it => {
         try {
             writer.writeSigned(16, 999999);
         } catch (e) { caught = e; }
-        
+
         expect(caught, `Expected writeSigned(8, 200) to throw an exception`).to.exist;
         caught = undefined;
 
@@ -190,8 +221,8 @@ describe('BitstreamWriter', it => {
         caught = undefined;
     });
     it('throws when writing Infinity as a signed integer', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 2);
 
         let caught;
@@ -202,40 +233,40 @@ describe('BitstreamWriter', it => {
         expect(caught, `Expected write(8, Infinity) to throw an exception`).to.exist;
     });
     it('writes undefined as zero when unsigned', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 1);
 
         writer.write(8, undefined);
         expect(bufs[0][0]).to.equal(0);
     });
     it('writes null as zero when unsigned', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 1);
 
         writer.write(8, null);
         expect(bufs[0][0]).to.equal(0);
     });
     it('writes undefined as zero when signed', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 1);
 
         writer.writeSigned(8, undefined);
         expect(bufs[0][0]).to.equal(0);
     });
     it('writes null as zero when signed', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 1);
 
         writer.writeSigned(8, null);
         expect(bufs[0][0]).to.equal(0);
     });
     it('correctly handles signed integers', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream);
 
         writer.writeSigned(8, -5); expect(bufs[0][0]).to.equal(0xFB);
@@ -250,21 +281,42 @@ describe('BitstreamWriter', it => {
         writer.writeSigned(16, 0); expect(Array.from(bufs[2])).to.eql([0, 0]);
 
         bufs = [];
+        writer = new BitstreamWriter(fakeStream, 2);
+
+        writer.writeSigned(16, -1014, 'little-endian'); expect(Array.from(bufs[0])).to.eql([0x0A, 0xFC]);
+        writer.writeSigned(16, 1014, 'little-endian'); expect(Array.from(bufs[1])).to.eql([0xF6, 0x03]);
+        writer.writeSigned(16, 0, 'little-endian'); expect(Array.from(bufs[2])).to.eql([0, 0]);
+
+        bufs = [];
         writer = new BitstreamWriter(fakeStream, 4);
 
         writer.writeSigned(32, -102336); expect(Array.from(bufs[0])).to.eql([0xFF, 0xFE, 0x70, 0x40]);
         writer.writeSigned(32, 102336); expect(Array.from(bufs[1])).to.eql([0x00, 0x01, 0x8F, 0xC0]);
         writer.writeSigned(32, 0); expect(Array.from(bufs[2])).to.eql([0, 0, 0, 0]);
 
+        bufs = [];
+        writer = new BitstreamWriter(fakeStream, 4);
+
+        writer.writeSigned(32, -102336, 'little-endian'); expect(Array.from(bufs[0])).to.eql([0x40, 0x70, 0xFE, 0xFF]);
+        writer.writeSigned(32, 102336, 'little-endian'); expect(Array.from(bufs[1])).to.eql([0xC0, 0x8F, 0x01, 0x00]);
+        writer.writeSigned(32, 0, 'little-endian'); expect(Array.from(bufs[2])).to.eql([0, 0, 0, 0]);
+
     });
     it('correctly handles floats', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 4);
 
         writer.writeFloat(32, 102.5); expect(Array.from(bufs[0])).to.eql([0x42, 0xCD, 0x00, 0x00]);
         writer.writeFloat(32, -436); expect(Array.from(bufs[1])).to.eql([0xC3, 0xDA, 0x00, 0x00]);
-        writer.writeFloat(32, 0); expect(Array.from(bufs[2])).to.eql([0,0,0,0]);
+        writer.writeFloat(32, 0); expect(Array.from(bufs[2])).to.eql([0, 0, 0, 0]);
+
+        bufs = [];
+        writer = new BitstreamWriter(fakeStream, 4);
+
+        writer.writeFloat(32, 102.5, 'little-endian'); expect(Array.from(bufs[0])).to.eql([0x00, 0x00, 0xCD, 0x42]);
+        writer.writeFloat(32, -436, 'little-endian'); expect(Array.from(bufs[1])).to.eql([0x00, 0x00, 0xDA, 0xC3]);
+        writer.writeFloat(32, 0, 'little-endian'); expect(Array.from(bufs[2])).to.eql([0, 0, 0, 0]);
 
         bufs = [];
         writer = new BitstreamWriter(fakeStream, 8);
@@ -277,11 +329,24 @@ describe('BitstreamWriter', it => {
 
         writer.writeFloat(64, 0);
         expect(Array.from(bufs[2])).to.eql([0, 0, 0, 0, 0, 0, 0, 0]);
+
+        bufs = [];
+        writer = new BitstreamWriter(fakeStream, 8);
+
+        writer.writeFloat(64, 8745291.56, 'little-endian');
+        expect(Array.from(bufs[0])).to.eql([0x1f, 0x85, 0xeb, 0x71, 0x29, 0xae, 0x60, 0x41]);
+
+        writer.writeFloat(64, -327721.17, 'little-endian');
+        expect(Array.from(bufs[1])).to.eql([0xe1, 0x7a, 0x14, 0xae, 0xa4, 0x00, 0x14, 0xc1]);
+
+        writer.writeFloat(64, 0, 'little-endian');
+        expect(Array.from(bufs[2])).to.eql([0, 0, 0, 0, 0, 0, 0, 0]);
+
     });
 
     it('.writeFloat() throws for lengths other than 32 and 64', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 4);
 
         let caught;
@@ -293,35 +358,35 @@ describe('BitstreamWriter', it => {
     });
 
     it('correctly handles NaN', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 4);
 
         writer.writeFloat(32, NaN); expect(Array.from(bufs[0])).to.eql([0x7F, 0xC0, 0x00, 0x00]);
-        
+
         bufs = [];
         writer = new BitstreamWriter(fakeStream, 8);
 
-        writer.writeFloat(64, NaN); 
-        expect(Array.from(bufs[0])).to.eql([ 0x7f, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ]);
+        writer.writeFloat(64, NaN);
+        expect(Array.from(bufs[0])).to.eql([0x7f, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
     });
 
     it('correctly handles Infinity', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 4);
 
-        writer.writeFloat(32, Infinity); expect(Array.from(bufs[0])).to.eql([ 0x7f, 0x80, 0x00, 0x00 ]);
-        
+        writer.writeFloat(32, Infinity); expect(Array.from(bufs[0])).to.eql([0x7f, 0x80, 0x00, 0x00]);
+
         bufs = [];
         writer = new BitstreamWriter(fakeStream, 8);
 
-        writer.writeFloat(64, Infinity); 
-        expect(Array.from(bufs[0])).to.eql([ 0x7f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 ]);
+        writer.writeFloat(64, Infinity);
+        expect(Array.from(bufs[0])).to.eql([0x7f, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
     });
     it('.end() flushes full bytes', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 4);
 
         writer.write(8, 44);
@@ -332,8 +397,8 @@ describe('BitstreamWriter', it => {
         expect(bufs[0][0]).to.equal(44);
     });
     it('.end() flushes partial bytes', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 4);
 
         writer.write(4, 0b1111);
@@ -344,8 +409,8 @@ describe('BitstreamWriter', it => {
         expect(bufs[0][0]).to.equal(0b11110000);
     });
     it('.writeString() writes utf-8 strings correctly', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 5);
 
         writer.writeString(5, 'hello', 'utf-8');
@@ -357,8 +422,8 @@ describe('BitstreamWriter', it => {
         expect(buf.toString('utf-8')).to.equal('hello');
     });
     it('.writeString() writes utf16le strings correctly', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 10);
 
         writer.writeString(10, 'hello', 'utf16le');
@@ -372,8 +437,8 @@ describe('BitstreamWriter', it => {
         (globalThis as any).Buffer = undefined;
 
         try {
-            let bufs : Buffer[] = [];
-            let fakeStream : any = { write(buf) { bufs.push(buf); } }
+            let bufs: Buffer[] = [];
+            let fakeStream: any = { write(buf) { bufs.push(buf); } }
             let writer = new BitstreamWriter(fakeStream, 10);
 
             let caught;
@@ -388,12 +453,12 @@ describe('BitstreamWriter', it => {
         }
     });
     it('.writeBuffer() works correctly', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 2);
 
-        let buf = Buffer.from([ 12, 34, 56, 78 ]);
-        writer.writeBuffer(buf);
+        let buf = Buffer.from([12, 34, 56, 78]);
+        writer.writeBytes(buf);
 
         expect(bufs.length).to.equal(2);
         expect(bufs[0][0]).to.equal(12);
@@ -402,13 +467,13 @@ describe('BitstreamWriter', it => {
         expect(bufs[1][1]).to.equal(78);
     });
     it('.writeBuffer() works even when not byte-aligned', () => {
-        let bufs : Buffer[] = [];
-        let fakeStream : any = { write(buf) { bufs.push(buf); } }
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
         let writer = new BitstreamWriter(fakeStream, 5);
 
-        let buf = Buffer.from([ 12, 34, 56, 78 ]);
+        let buf = Buffer.from([12, 34, 56, 78]);
         writer.write(4, 0);
-        writer.writeBuffer(buf);
+        writer.writeBytes(buf);
         writer.write(4, 0);
 
         expect(bufs.length).to.equal(1);
