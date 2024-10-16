@@ -613,6 +613,9 @@ export class BitstreamReader {
         if (this.available < length)
             throw new Error(`underrun: Not enough bits are available (requested=${length}, available=${this.bufferedLength}, buffers=${this.buffers.length})`);
 
+        if (byteOrder === 'little-endian' && (length < 8 || length % 8))
+            throw new Error(`little-endian is only supported for 16,32 or 64bit length (requested=${length}, available=${this.bufferedLength}, buffers=${this.buffers.length})`);
+
         this.adjustSkip();
 
         let offsetIntoByte = this._offsetIntoBuffer % 8;
@@ -660,20 +663,6 @@ export class BitstreamReader {
 
             bitContribution = Math.min(8 - bitOffset, remainingLength);
 
-            // if (useBigInt) {
-            //     const dv = new DataView(new ArrayBuffer(8));
-            //     dv.setBigUint64(0, (bigValue << BigInt(bitContribution))
-            //         | ((BigInt(buffer[byteOffset]) >> (BigInt(8) - BigInt(bitContribution) - BigInt(bitOffset)))
-            //             & BigInt(this.maskOf(bitContribution))), false);
-            //     bigValue = dv.getBigUint64(0, byteOrder == 'little-endian');
-            // } else {
-            //     const dv = new DataView(new ArrayBuffer(4));
-            //     dv.setUint32(0, (value << bitContribution)
-            //         | ((byte >> (8 - bitContribution - bitOffset))
-            //             & this.maskOf(bitContribution)), false);
-            //     value = dv.getUint32(0, byteOrder == 'little-endian');
-            // }
-
             if (useBigInt) {
                 bigValue = (bigValue << BigInt(bitContribution))
                     | ((BigInt(buffer[byteOffset]) >> (BigInt(8) - BigInt(bitContribution) - BigInt(bitOffset)))
@@ -698,10 +687,20 @@ export class BitstreamReader {
         if (consume)
             this.consume(length);
 
-        if (useBigInt)
-            return Number(bigValue);
-        else
+        value = useBigInt ? Number(bigValue) : value;
+
+        if (byteOrder === 'little-endian') {
+            let nvalue = BigInt(0);
+            //if (length == 32) console.log(value.toString(2).padStart(64, '.').match(/.{1,8}/g).join(":"), '++++++++');
+            for (let i = 0; i < length; i += 8) {
+                nvalue = nvalue | ((BigInt(value) >> BigInt(i)) & BigInt(0xFF)) << BigInt(length - i - 8);
+            }
+            //if (length == 32) console.log(nvalue.toString(2).padStart(64, '.').match(/.{1,8}/g).join(":"), '--------');
+            return Number(nvalue);
+        } else {
             return value;
+        }
+
     }
 
     private adjustSkip() {

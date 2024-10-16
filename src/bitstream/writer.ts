@@ -157,7 +157,7 @@ export class BitstreamWriter {
             throw new Error(`Cannot write to bitstream: Value ${value} must be finite`);
 
         if (byteOrder === 'little-endian') {
-            if (length != 16 && length != 32) throw new Error("Little-endian is only supported for 16,32");
+            if (length % 8 && length > 8) throw new Error("Little-endian is only supported for 16,32 or 64bit length");
 
             let buf = new ArrayBuffer(length / 8);
             let view = new DataView(buf);

@@ -874,7 +874,7 @@ describe('BitstreamReader (generated)', it => {
                 expect(reader.readSync(size), `Test number #${i} (${num}) should have been read properly`).to.equal(num);
             }
         });
-        if (size > 8 && (size % 8 == 0) && size <= 32) it(`reads ${size}bit values correctly (LE)`, async () => {
+        if (size > 8 && (size % 8 == 0)) it(`reads ${size}bit values correctly (LE)`, async () => {
             let buf = new ArrayBuffer(8);
             let view = new DataView(buf);
 
@@ -903,7 +903,7 @@ describe('BitstreamReader (generated)', it => {
                 expect(reader.readSync(size), `Test number #${i} (${num}) should have been read properly`).to.equal(num);
             }
         });
-        if (size > 8 && (size % 8 == 0) && size <= 32) it(`reads cross-byte ${size}bit values correctly [1-bit offset] LE`, async () => {
+        if (size > 8 && (size % 8 == 0)) it(`reads cross-byte ${size}bit values correctly [1-bit offset] LE`, async () => {
             let buf = new ArrayBuffer(8);
             let view = new DataView(buf);
 
@@ -911,15 +911,15 @@ describe('BitstreamReader (generated)', it => {
                 let num = Math.floor(Math.random() * 2 ** size);
                 view.setBigUint64(0, BigInt(num), true);
                 let reader = new BitstreamReader();
-                let shifted = new Uint8Array(buf).reduce((prev, cur, index, arr) => {
-                    prev[index] = cur >> 1 | prev[index];
-                    prev[index + 1] = cur << 7;
-                    //                    console.log(`Index ${index} ${cur.toString(2).padStart(8, '0')} -> ${prev[index].toString(2).padStart(8, '0')}:${prev[index + 1].toString(2).padStart(8, '0')}`)
+                let shifted = new Uint8Array(buf).reduce((prev, cur, index: number, arr) => {
+                    prev[index] = (cur >> 1) | ((index == 0) ? 0x0 : prev[index]);
+                    prev[index + 1] = (cur << 7) & 0b10000000;
                     return prev;
                 }, new Uint8Array(buf.byteLength + 1));
                 reader.addBuffer(shifted);
                 reader.readSync(1);
-                expect(reader.readSync(size, 'little-endian'), `Test number #${i} (${num}) should have been read properly`).to.equal(num);
+                const target = reader.readSync(size, 'little-endian');
+                expect(target, `Test number #${i} (${num}) should have been read properly`).to.equal(num);
             }
         });
     }
@@ -939,7 +939,7 @@ describe('BitstreamReader (generated)', it => {
                 expect(reader.readSync(size), `Test number #${i} (${num}) should have been read properly`).to.equal(num);
             }
         });
-        if (size > 8 && (size % 8 == 0) && size <= 32) it(`reads cross-byte ${size}bit values correctly [4-bit offset] LE`, async () => {
+        if (size > 8 && (size % 8 == 0)) it(`reads cross-byte ${size}bit values correctly [4-bit offset] LE`, async () => {
             let buf = new ArrayBuffer(8);
             let view = new DataView(buf);
 
@@ -950,7 +950,6 @@ describe('BitstreamReader (generated)', it => {
                 let shifted = new Uint8Array(buf).reduce((prev, cur, index, arr) => {
                     prev[index] = cur >> 4 | prev[index];
                     prev[index + 1] = cur << 4;
-                    //                    console.log(`Index ${index} ${cur.toString(2).padStart(8, '0')} -> ${prev[index].toString(2).padStart(8, '0')}:${prev[index + 1].toString(2).padStart(8, '0')}`)
                     return prev;
                 }, new Uint8Array(buf.byteLength + 1));
                 reader.addBuffer(shifted);
