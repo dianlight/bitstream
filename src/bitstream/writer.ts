@@ -144,11 +144,15 @@ export class BitstreamWriter {
      * number of bits specified, the lower-order bits are written and the higher-order bits are ignored.
      * @param length The number of bits to write
      * @param value The number to write
+     * @param byteOrder The byte order to use when the length is greater than 8 and is a multiple of 8. 
+     *                  Defaults to MSB (most significant byte). If the length is not a multiple of 8, 
+     *                  this is unused
+     * 
      */
     write(length: number, value: number | bigint, byteOrder: "big-endian" | "little-endian" = 'big-endian') {
         if (value === void 0 || value === null)
             value = 0;
-
+        
         value = Number(value);
 
         if (Number.isNaN(value))
@@ -203,10 +207,10 @@ export class BitstreamWriter {
     writeSigned(length: number, value: number | bigint, byteOrder: "big-endian" | "little-endian" = 'big-endian') {
         if (value === undefined || value === null)
             value = 0;
-
+        
         const originalValue = value;
-        const max = 2 ** (length - 1) - 1; // ie 127
-        const min = -(2 ** (length - 1)); // ie -128
+        const max = 2**(length - 1) - 1; // ie 127
+        const min = -(2**(length - 1)); // ie -128
 
         value = Number(value);
 
@@ -242,7 +246,7 @@ export class BitstreamWriter {
     writeFloat(length: number, value: number, byteOrder: "big-endian" | "little-endian" = 'big-endian') {
         if (length !== 32 && length !== 64)
             throw new TypeError(`Invalid length (${length} bits) Only 4-byte (32 bit / single-precision) and 8-byte (64 bit / double-precision) IEEE 754 values are supported`);
-
+        
         let buf = new ArrayBuffer(length / 8);
         let view = new DataView(buf);
 
@@ -267,15 +271,15 @@ export class BitstreamMeasurer extends BitstreamWriter {
 
     bitLength = 0;
 
-    writeString(byteCount: number, value: string, encoding: string = 'utf-8') {
+    writeString(byteCount : number, value : string, encoding : string = 'utf-8') {
         this.bitLength += byteCount * 8;
     }
 
-    writeBuffer(buffer: Uint8Array) {
+    writeBuffer(buffer : Uint8Array) {
         this.bitLength += buffer.length * 8;
     }
 
-    write(length: number, value: number) {
+    write(length : number, value : number) {
         this.bitLength += length;
     }
 }
