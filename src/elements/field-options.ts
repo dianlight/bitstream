@@ -3,6 +3,7 @@ import { ArrayOptions } from "./array-options";
 import { BufferOptions } from "./buffer-options";
 import { Serializer } from "./serializer";
 import { ValueDeterminant } from "./value-determinant";
+import { ValueTransformers } from "./value-transformer";
 import { VariantDefinition } from "./variant-definition";
 import { NumberOptions } from "./number-options";
 import { BooleanOptions } from "./boolean-options";
@@ -159,4 +160,10 @@ export interface FieldOptions<T extends BitstreamElement, V> {
      * parsed.
      */
     initializer?: (instance: any, parentElement: any) => void;
+
+    /**
+     * Transformes to call on parsed values.
+     * This is called after value parser on read and before value serializer on write
+     */
+    transformers?: ValueTransformers<T, V>;
 }
