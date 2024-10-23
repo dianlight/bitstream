@@ -74,6 +74,24 @@ describe('BitstreamWriter', it => {
         expect(bufs[0][0]).to.equal(0b01010101);
         expect(bufs[1][0]).to.equal(0b10101010);
     });
+    it('works for large writes (1) LE', () => {
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
+        let writer = new BitstreamWriter(fakeStream);
+        writer.write(16, 0b1111111100000000, 'little-endian');
+        expect(bufs.length).to.equal(2);
+        expect(bufs[0][0]).to.equal(0b00000000);
+        expect(bufs[1][0]).to.equal(0b11111111);
+    });
+    it('works for large writes (2) LE', () => {
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
+        let writer = new BitstreamWriter(fakeStream);
+        writer.write(16, 0b0101010110101010, 'little-endian');
+        expect(bufs.length).to.equal(2);
+        expect(bufs[0][0]).to.equal(0b10101010);
+        expect(bufs[1][0]).to.equal(0b01010101);
+    });
     it('works for offset large writes', () => {
         let bufs : Buffer[] = [];
         let fakeStream : any = { write(buf) { bufs.push(buf); } }
@@ -86,6 +104,19 @@ describe('BitstreamWriter', it => {
         expect(bufs[0][0]).to.equal(0b11110101);
         expect(bufs[1][0]).to.equal(0b01011010);
         expect(bufs[2][0]).to.equal(0b10101111);
+    });
+    it('works for offset large writes LE', () => {
+        let bufs: Buffer[] = [];
+        let fakeStream: any = { write(buf) { bufs.push(buf); } }
+        let writer = new BitstreamWriter(fakeStream);
+        writer.write(4, 0b1111);
+        writer.write(16, 0b0101010110101010, 'little-endian');
+        writer.write(4, 0b1111);
+
+        expect(bufs.length).to.equal(3);
+        expect(bufs[0][0]).to.equal(0b11111010);
+        expect(bufs[1][0]).to.equal(0b10100101);
+        expect(bufs[2][0]).to.equal(0b01011111);
     });
     it('respects configured buffer size', () => {
         let bufs : Buffer[] = [];
@@ -250,11 +281,25 @@ describe('BitstreamWriter', it => {
         writer.writeSigned(16, 0); expect(Array.from(bufs[2])).to.eql([0, 0]);
 
         bufs = [];
+        writer = new BitstreamWriter(fakeStream, 2);
+
+        writer.writeSigned(16, -1014, 'little-endian'); expect(Array.from(bufs[0])).to.eql([0x0A, 0xFC]);
+        writer.writeSigned(16, 1014, 'little-endian'); expect(Array.from(bufs[1])).to.eql([0xF6, 0x03]);
+        writer.writeSigned(16, 0, 'little-endian'); expect(Array.from(bufs[2])).to.eql([0, 0]);
+
+        bufs = [];
         writer = new BitstreamWriter(fakeStream, 4);
 
         writer.writeSigned(32, -102336); expect(Array.from(bufs[0])).to.eql([0xFF, 0xFE, 0x70, 0x40]);
         writer.writeSigned(32, 102336); expect(Array.from(bufs[1])).to.eql([0x00, 0x01, 0x8F, 0xC0]);
         writer.writeSigned(32, 0); expect(Array.from(bufs[2])).to.eql([0, 0, 0, 0]);
+
+        bufs = [];
+        writer = new BitstreamWriter(fakeStream, 4);
+
+        writer.writeSigned(32, -102336, 'little-endian'); expect(Array.from(bufs[0])).to.eql([0x40, 0x70, 0xFE, 0xFF]);
+        writer.writeSigned(32, 102336, 'little-endian'); expect(Array.from(bufs[1])).to.eql([0xC0, 0x8F, 0x01, 0x00]);
+        writer.writeSigned(32, 0, 'little-endian'); expect(Array.from(bufs[2])).to.eql([0, 0, 0, 0]);
 
     });
     it('correctly handles floats', () => {
@@ -267,6 +312,13 @@ describe('BitstreamWriter', it => {
         writer.writeFloat(32, 0); expect(Array.from(bufs[2])).to.eql([0,0,0,0]);
 
         bufs = [];
+        writer = new BitstreamWriter(fakeStream, 4);
+
+        writer.writeFloat(32, 102.5, 'little-endian'); expect(Array.from(bufs[0])).to.eql([0x00, 0x00, 0xCD, 0x42]);
+        writer.writeFloat(32, -436, 'little-endian'); expect(Array.from(bufs[1])).to.eql([0x00, 0x00, 0xDA, 0xC3]);
+        writer.writeFloat(32, 0, 'little-endian'); expect(Array.from(bufs[2])).to.eql([0, 0, 0, 0]);
+
+        bufs = [];
         writer = new BitstreamWriter(fakeStream, 8);
 
         writer.writeFloat(64, 8745291.56);
@@ -277,6 +329,19 @@ describe('BitstreamWriter', it => {
 
         writer.writeFloat(64, 0);
         expect(Array.from(bufs[2])).to.eql([0, 0, 0, 0, 0, 0, 0, 0]);
+
+        bufs = [];
+        writer = new BitstreamWriter(fakeStream, 8);
+
+        writer.writeFloat(64, 8745291.56, 'little-endian');
+        expect(Array.from(bufs[0])).to.eql([0x1f, 0x85, 0xeb, 0x71, 0x29, 0xae, 0x60, 0x41]);
+
+        writer.writeFloat(64, -327721.17, 'little-endian');
+        expect(Array.from(bufs[1])).to.eql([0xe1, 0x7a, 0x14, 0xae, 0xa4, 0x00, 0x14, 0xc1]);
+
+        writer.writeFloat(64, 0, 'little-endian');
+        expect(Array.from(bufs[2])).to.eql([0, 0, 0, 0, 0, 0, 0, 0]);
+
     });
 
     it('.writeFloat() throws for lengths other than 32 and 64', () => {

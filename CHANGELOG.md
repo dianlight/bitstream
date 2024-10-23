@@ -1,5 +1,6 @@
 # ⏩ vNext
 - Add support for custom transformers on parsed values
+- Fix ByteOrder in number serializer - aka support for lsb
 
 # v4.2.2
 - Fix an issue where the new 53-bit oversize error is emitted when the `float` format is selected, even though it is 

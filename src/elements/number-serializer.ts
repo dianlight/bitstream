@@ -23,11 +23,11 @@ export class NumberSerializer implements Serializer {
         
         let format = field.options?.number?.format ?? 'unsigned';
         if (format === 'unsigned')
-            return reader.readSync(length);
+            return reader.readSync(length, field.options?.number?.byteOrder);
         else if (format === 'signed')
-            return reader.readSignedSync(length);
+            return reader.readSignedSync(length, field.options?.number?.byteOrder);
         else if (format === 'float')
-            return reader.readFloatSync(length);
+            return reader.readFloatSync(length, field.options?.number?.byteOrder);
         else
             throw new TypeError(`Unsupported number format '${format}'`);
     }
@@ -46,11 +46,11 @@ export class NumberSerializer implements Serializer {
         let format = field.options?.number?.format ?? 'unsigned';
 
         if (format === 'unsigned')
-            writer.write(length, value);
+            writer.write(length, value, field.options?.number?.byteOrder);
         else if (format === 'signed')
-            writer.writeSigned(length, value);
+            writer.writeSigned(length, value, field.options?.number?.byteOrder);
         else if (format === 'float')
-            writer.writeFloat(length, value);
+            writer.writeFloat(length, value, field.options?.number?.byteOrder);
         else
             throw new TypeError(`Unsupported number format '${format}'`);
     }
