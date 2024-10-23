@@ -115,6 +115,8 @@ describe('BitstreamElement', it => {
         });
     });
 
+
+
     it('can handle private fields', async () => {
         class CustomElement extends BitstreamElement {
             @Field(8) private byte1 : number;
@@ -145,6 +147,35 @@ describe('BitstreamElement', it => {
 
         expect(b.field1).to.equal(1);
         expect(b.field2).to.equal(2);
+    });
+    
+    describe(': Transformers', it => {
+        it('@Field() accepts read transformer', async () => {
+            class A extends BitstreamElement {
+                @Field(8,{transformers: {read:(v)=>v*2}}) byte1: number;
+                @Field(8,{transformers: {read:(v)=>v/10}}) byte2: number;
+            }
+        
+            let a = A.deserialize(Buffer.from([ 123, 124, 'G', 'o' ]));
+
+            expect(a.byte1).to.equal(123*2);
+            expect(a.byte2).to.equal(124/10);
+        });
+        it('@Field() accepts write transformer', async () => {
+            class A extends BitstreamElement {
+                @Field(8,{transformers: {write:(v)=>v/2}}) byte1: number;
+                @Field(8,{transformers: {write:(v)=>v*10}}) byte2: number;
+            }
+
+            let a = new A();
+            a.byte1 = 123*2;
+            a.byte2 = 124/10;
+
+            let buf = Buffer.from(a.serialize());
+        
+            expect(buf.readUInt8(0)).to.equal(123);
+            expect(buf.readUInt8(1)).to.equal(124);
+        });
     });
 
     it('@Field() accepts single options when length is inferred', async () => {
@@ -509,6 +540,37 @@ describe('BitstreamElement', it => {
                 0,0,0,0
             ]);
         });
+        it('reads integer trasform to floats ', () => {
+            class CustomElement extends BitstreamElement {
+                @Field(16, { number: { format: 'unsigned' }, transformers: {read:(v)=>v/10}}) a : number;
+                @Field(32, { number: { format: 'signed' }, transformers: {read:(v)=>v/100}}) b : number;
+                @Field(32, { number: { format: 'float' }, transformers: {read:(v)=>v/10}}) c : number;
+            }
+
+            let element = CustomElement.deserialize(Buffer.from([
+                0x04, 0x01,
+                0xc9, 0x56, 0x00, 0x00,
+                0xC3, 0xDA, 0x00, 0x00
+            ]));
+
+            expect(element.a).to.equal(102.5);
+            expect(element.b).to.equal(-9171107.84);
+            expect(element.c).to.equal(-43.6);
+        });
+        it('writes floats trasform to ineteger', () => {
+            class CustomElement extends BitstreamElement {
+                @Field(16, { number: { format: 'unsigned' }, transformers: {write:(v)=>v*10}}) a : number;
+                @Field(32, { number: { format: 'signed' }, transformers: {write:(v)=>v*100}}) b : number;
+                @Field(32, { number: { format: 'float' }, transformers: {write:(v)=>v*10}}) c : number;
+            }
+
+            let buf = new CustomElement().with({ a: 102.5, b:-9171107.84, c: -43.6 }).serialize();
+            expect(Array.from(buf)).to.eql([
+                0x04, 0x01,
+                0xc9, 0x56, 0x00, 0x00,
+                0xC3, 0xDA, 0x00, 0x00
+            ]);
+        });
         it('throws with an invalid format while reading', () => {
             class CustomElement extends BitstreamElement {
                 @Field(32, { number: { format: <any>'invalid' }}) a : number;
@@ -710,6 +772,32 @@ describe('BitstreamElement', it => {
 
             let buffer = new CustomElement().with({ a: true, b: false, c: undefined, d: false }).serialize();
             expect(Array.from(buffer)).to.eql([ 1, 0, 99, 0 ]);
+        });
+        it('behaves correctly with transformer', () => {
+            class CustomElement extends BitstreamElement {
+                @Field(8, { boolean: { mode: 'undefined' },transformers:{read: v => !v}}) a : boolean;
+                @Field(8, { boolean: { mode: 'undefined' },transformers:{read: v => !v}}) b : boolean;
+                @Field(8, { boolean: { mode: 'undefined' },transformers:{read: v => v != undefined?!v:undefined}}) c : boolean;
+                @Field(8, { boolean: { mode: 'undefined' },transformers:{read: v => !v}}) d : boolean;
+            }
+
+            let element = CustomElement.deserialize(Buffer.from([ 0, 1, 2, 0 ]));
+
+            expect(element.a).to.equal(!false);
+            expect(element.b).to.equal(!true);
+            expect(element.c).to.be.undefined;
+            expect(element.d).to.equal(!false);
+        });
+        it('respects the transformet value while writing', () => {
+            class CustomElement extends BitstreamElement {
+                @Field(8, { boolean: { undefined: 99 },transformers:{write: v => !v}}) a : boolean;
+                @Field(8, { boolean: { undefined: 99 },transformers:{write: v => !v}}) b : boolean;
+                @Field(8, { boolean: { undefined: 99 },transformers:{write: v => !v}}) c : boolean;
+                @Field(8, { boolean: { undefined: 99 },transformers:{write: v => !v}}) d : boolean;
+            }
+
+            let buffer = new CustomElement().with({ a: !true, b: !false, c: undefined, d: !false }).serialize();
+            expect(Array.from(buffer)).to.eql([ 1, 0, 1, 0 ]);
         });
     });
     describe(': Byte Arrays', it => {
@@ -1005,6 +1093,32 @@ describe('BitstreamElement', it => {
             }
     
             let buf = Buffer.from(new CustomElement().with({ c: 'hello' }).serialize());
+            
+            expect(buf.toString('utf-8')).to.equal('hello');
+        });
+        it('are read and transformed correctly', async () => {
+            class CustomElement extends BitstreamElement {
+                @Field(4) a;
+                @Field(4) b;
+                @Field(5,{transformers:{read: v=>v+" world"}}) c : string;
+            }
+    
+            let bitstream = new BitstreamReader();
+            bitstream.addBuffer(Buffer.from([ 0b11010110 ]));
+            bitstream.addBuffer(Buffer.from('hello', 'utf-8'));
+    
+            let element = await CustomElement.readBlocking(bitstream);
+    
+            expect(element.a).to.equal(0b1101);
+            expect(element.b).to.equal(0b0110);
+            expect(element.c).to.equal('hello world');
+        });
+        it('are written and trasformed correctly', async () => {
+            class CustomElement extends BitstreamElement {
+                @Field(5,{transformers:{write: v=>v.split(' ')[0]}}) c : string;
+            }
+    
+            let buf = Buffer.from(new CustomElement().with({ c: 'hello world' }).serialize());
             
             expect(buf.toString('utf-8')).to.equal('hello');
         });

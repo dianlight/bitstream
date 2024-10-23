@@ -550,6 +550,20 @@ class Type2Element extends BaseElement {
 Here `count` and `items.length` will always agree at all times, with the bonus that assigning `undefined` to the array
 is forbidden.
 
+### Transformers
+
+It can be useful to have custom function that transforms the field value after deserialize or before serialize.
+Use the  `transformers` option to specify read or/and write function:
+
+```typescript
+class Type2Element extends BaseElement {
+    @Field(version, { transformers: {read: v => v/100, write: v => v * 100 })
+    version : number;
+}
+```
+
+In this example version value `1.20` is the integer `120` on the stream.
+
 ### Measurement
 
 It can be useful to measure the bitlength of a portion of a BitstreamElement. Such a measurement could be used when 

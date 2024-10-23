@@ -309,6 +309,10 @@ export class BitstreamElement {
                     }
                 }
 
+                if (field.options.transformers?.write){
+                    writtenValue = field.options.transformers.write(writtenValue,this,field);
+                }
+
                 try {
                     field.options.serializer.write(writer, field.type, this, field, writtenValue);
                 } catch (e) {
@@ -779,8 +783,12 @@ export class BitstreamElement {
                         }
                     }
 
-                    if (!element.options.isIgnored)
+                    if (!element.options.isIgnored){
+                        if(element.options.transformers?.read){
+                            readValue = element.options.transformers.read(readValue,this,element);
+                        }
                         instance[element.name] = readValue;
+                    }
                     instance.readFields.push(element.name);
                     instance.bitsRead += (bitstream.offset - startOffset);
 
@@ -1258,6 +1266,7 @@ export class BitstreamElement {
         delete element.savedConstructorParams;
         if (!options?.elementBeingVariated)
             element.onParseFinished();
+
         return <InstanceType<T>> element;
     }
 

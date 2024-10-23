@@ -1,4 +1,5 @@
 # ⏩ vNext
+- Add support for custom transformers on parsed values
 - Fix ByteOrder in number serializer - aka support for lsb
 
 # v4.2.2
