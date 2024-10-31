@@ -22,7 +22,7 @@
     "test:nocov": "npm run build && node dist/test",
     "benchmark": "npm run build && node dist/benchmark",
     "prepublishOnly": "npm test",
-    "prepare": "npm run build"
+    "install": "npm run build"
   },
   "repository": {
     "url": "git@github.com:astronautlabs/bitstream.git"
