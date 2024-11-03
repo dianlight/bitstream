@@ -212,6 +212,42 @@ describe('BitstreamElement', it => {
             expect(buf.readUInt16BE(0)).to.equal(14);
             expect(buf.readUInt16BE(2)).to.equal(1025);
         });
+        it('@Field() accept read and write transformer LE', async () => {
+            class A extends BitstreamElement {
+                @Field(16,{number: {byteOrder: 'little-endian', format: 'unsigned'},transformers: {write:(v)=>v/2, read:(v)=>v*2}}) num1: number;
+                @Field(16,{number: {byteOrder: 'little-endian', format: 'unsigned'},transformers: {write:(v)=>v*10, read:(v)=>v/10}}) num2: number;
+            }
+
+            let a = new A();
+            a.num1 = 24;
+            a.num2 = 23.6;
+
+            let buf = Buffer.from(a.serialize());
+        
+            expect(buf.readUInt16LE(0)).to.equal(12);
+            expect(buf.readUInt16LE(2)).to.equal(236);
+
+            let a2 = A.deserialize(buf);
+            expect(a2.num1).to.equal(24);
+            expect(a2.num2).to.equal(23.6);
+        });
+        it('@Field() accept write and read transformer LE', async () => {
+            class A extends BitstreamElement {
+                @Field(16,{number: {byteOrder: 'little-endian',format: 'unsigned'},transformers: {write:(v)=>v/2, read:(v)=>v*2}}) num1: number;
+                @Field(16,{number: {byteOrder: 'little-endian',format: 'unsigned'},transformers: {write:(v)=>v*10, read:(v)=>v/10}}) num2: number;
+            }
+
+            let buf = Buffer.from('0E000104','hex');
+
+            let a = A.deserialize(buf);
+            expect(a.num1).to.equal(28);
+            expect(a.num2).to.equal(102.5);
+
+            buf = Buffer.from(a.serialize());
+        
+            expect(buf.readUInt16LE(0)).to.equal(14);
+            expect(buf.readUInt16LE(2)).to.equal(1025);
+        });
     });
 
     it('@Field() accepts single options when length is inferred', async () => {
