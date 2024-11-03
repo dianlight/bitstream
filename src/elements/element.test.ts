@@ -176,6 +176,25 @@ describe('BitstreamElement', it => {
             expect(buf.readUInt8(0)).to.equal(123);
             expect(buf.readUInt8(1)).to.equal(124);
         });
+        it('@Field() accept read and write transformer', async () => {
+            class A extends BitstreamElement {
+                @Field(16,{number: {format: 'unsigned'},transformers: {write:(v)=>v/2, read:(v)=>v*2}}) num1: number;
+                @Field(16,{number: {format: 'unsigned'},transformers: {write:(v)=>v*10, read:(v)=>v/10}}) num2: number;
+            }
+
+            let a = new A();
+            a.num1 = 24;
+            a.num2 = 23.6;
+
+            let buf = Buffer.from(a.serialize());
+        
+            expect(buf.readUInt16BE(0)).to.equal(12);
+            expect(buf.readUInt16BE(2)).to.equal(236);
+
+            let a2 = A.deserialize(buf);
+            expect(a2.num1).to.equal(24);
+            expect(a2.num2).to.equal(23.6);
+        });
     });
 
     it('@Field() accepts single options when length is inferred', async () => {
