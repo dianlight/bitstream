@@ -865,6 +865,10 @@ export class BitstreamElement {
 
             let writtenValue = this[element.name];
 
+            if (element.options.transformers?.write) {
+                writtenValue = element.options.transformers.write(writtenValue, this, element);
+            }
+
             if (element.options.writtenValue) {
                 if (typeof element.options.writtenValue === 'function') {
                     writtenValue = element.options.writtenValue(this, element);
