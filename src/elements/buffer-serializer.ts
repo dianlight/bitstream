@@ -36,6 +36,11 @@ import { summarizeField } from "./utils";
                 break;
         }
 
+        if ( field?.options?.transformers?.read ){
+            buffer = field.options.transformers.read(buffer,field, parent);
+        }
+
+
         return buffer;
     }
 
@@ -55,6 +60,11 @@ import { summarizeField } from "./utils";
         if (!value) {
             throw new Error(`BufferSerializer: Field ${String(field.name)}: Cannot encode a null buffer`);
         }
+
+        if ( field?.options?.transformers?.write ){
+            value = field.options.transformers.write(value,field, parent);
+        }
+
 
         if (value.length > fieldLength) {
             if (truncate) {

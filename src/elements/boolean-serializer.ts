@@ -15,17 +15,26 @@ export class BooleanSerializer implements Serializer {
         if (!reader.isAvailable(length))
             yield { remaining: length, contextHint: () => summarizeField(field) };
 
-        const numericValue = reader.readSync(length);
+        let numericValue = reader.readSync(length);
+
         const trueValue = field?.options?.boolean?.true ?? 1;
         const falseValue = field?.options?.boolean?.false ?? 0;
         const mode = field?.options?.boolean?.mode ?? 'true-unless';
         
+        let boolValue;
         if (mode === 'true-unless')
-            return numericValue !== falseValue;
+            boolValue = numericValue !== falseValue;
         else if (mode === 'false-unless')
-            return numericValue === trueValue;
+            boolValue = numericValue === trueValue;
         else if (mode === 'undefined')
-            return numericValue === trueValue ? true : numericValue === falseValue ? false : undefined;
+            boolValue = numericValue === trueValue ? true : numericValue === falseValue ? false : undefined;
+
+        if ( field?.options?.transformers?.read ){
+            boolValue = field.options.transformers.read(boolValue,field, parent);
+        }
+
+        return boolValue;
+
     }
 
     write(writer: BitstreamWriter, type : any, instance: any, field: FieldDefinition, value: any) {
@@ -34,6 +43,10 @@ export class BooleanSerializer implements Serializer {
         const falseValue = field?.options?.boolean?.false ?? 0;
         const undefinedValue = field?.options?.boolean?.undefined ?? 0;
         let numericValue : number;
+
+        if ( field?.options?.transformers?.write ){
+            value = field.options.transformers.write(value,field, instance);
+        }
 
         if (value === void 0)
             numericValue = undefinedValue;

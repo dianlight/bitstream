@@ -75,6 +75,11 @@ export class ArraySerializer implements Serializer {
                     readNumber();
                 }
             }
+            if(field.options?.transformers?.read) {
+                elements.forEach((element, index) => {
+                    elements[index] = field.options.transformers.read(element, field, parent);     
+                })
+            }
         } else {
             if (field.options.array.hasMore) {
                 let i = 0;
@@ -167,10 +172,15 @@ export class ArraySerializer implements Serializer {
             }
         }
 
+
         for (let i = 0; i < length; ++i) {
             if (field?.options?.array?.type === Number) { 
                 let type = field.options?.number?.format ?? 'unsigned';
 
+                if(field.options?.transformers?.write) {
+                    value[i] = field.options.transformers.write(value[i],field,parent);
+                }
+        
                 if (type === 'unsigned')
                     writer.write(field.options.array.elementLength, value[i]);
                 else if (type === 'signed')
@@ -179,6 +189,10 @@ export class ArraySerializer implements Serializer {
                     writer.writeFloat(field.options.array.elementLength, value[i]);
                 
             } else {
+                if(field.options?.transformers?.write) {
+                   Object.assign(value[i], field.options.transformers.write(value[i],field,parent));
+                }
+
                 (value[i] as BitstreamElement).write(writer, { context: parent?.context });
             }
         }
