@@ -1629,6 +1629,37 @@ describe('BitstreamElement', it => {
                 expect(element.items[2].b).to.equal(22);
                 expect(element.afterwards).to.equal(123);
             });
+            it('should correctly parse and serialize elements with transformer', async () => {
+                class ItemElement extends BitstreamElement {
+                    @Field(8,{transformers: { read:(v)=>v/10, write:(v)=>v*10}}) a;
+                    @Field(8,{transformers: { read:(v)=>v*2, write:(v)=>v/2}}) b;
+                }
+                class CustomElement extends BitstreamElement {
+                    @Field(8) before;
+                    @Field(0, { array: { type: ItemElement, countFieldLength: 8 } }) items : ItemElement[];
+                    @Field(8) afterwards;
+                }
+        
+                let bitstream = new BitstreamReader();
+                bitstream.addBuffer(Buffer.from([ 123, 3, 1, 2, 11, 12, 21, 22, 123 ]));
+        
+                let element = await CustomElement.readBlocking(bitstream);
+        
+                expect(element.before).to.equal(123);
+                expect(element.items.length).to.equal(3);
+                
+                expect(element.items[0].a).to.equal(0.1);
+                expect(element.items[0].b).to.equal(4);
+                expect(element.items[1].a).to.equal(1.1);
+                expect(element.items[1].b).to.equal(24);
+                expect(element.items[2].a).to.equal(2.1);
+                expect(element.items[2].b).to.equal(44);
+                expect(element.afterwards).to.equal(123);
+
+                let nbuffer = element.serialize();
+                expect(Array.from(nbuffer)).to.eql([ 123, 3, 1, 2, 11, 12, 21, 22, 123 ]);
+
+            });
             it('should understand hasMore discriminant', async () => {
                 class CustomItem extends BitstreamElement {
                     @Field(8) byte;
