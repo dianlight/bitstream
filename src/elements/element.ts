@@ -309,10 +309,6 @@ export class BitstreamElement {
                     }
                 }
 
-                if (field.options.transformers?.write){
-                    writtenValue = field.options.transformers.write(writtenValue,this,field);
-                }
-
                 try {
                     field.options.serializer.write(writer, field.type, this, field, writtenValue);
                 } catch (e) {
@@ -784,9 +780,6 @@ export class BitstreamElement {
                     }
 
                     if (!element.options.isIgnored){
-                        if(element.options.transformers?.read){
-                            readValue = element.options.transformers.read(readValue,this,element);
-                        }
                         instance[element.name] = readValue;
                     }
                     instance.readFields.push(element.name);
@@ -864,10 +857,6 @@ export class BitstreamElement {
                 continue;
 
             let writtenValue = this[element.name];
-
-            if (element.options.transformers?.write) {
-                writtenValue = element.options.transformers.write(writtenValue, this, element);
-            }
 
             if (element.options.writtenValue) {
                 if (typeof element.options.writtenValue === 'function') {

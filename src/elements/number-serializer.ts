@@ -22,14 +22,22 @@ export class NumberSerializer implements Serializer {
             yield { remaining: length, contextHint: () => summarizeField(field) };
         
         let format = field.options?.number?.format ?? 'unsigned';
+        let numericValue;
         if (format === 'unsigned')
-            return reader.readSync(length);
+            numericValue = reader.readSync(length);
         else if (format === 'signed')
-            return reader.readSignedSync(length);
+            numericValue = reader.readSignedSync(length);
         else if (format === 'float')
-            return reader.readFloatSync(length);
+            numericValue = reader.readFloatSync(length);
         else
             throw new TypeError(`Unsupported number format '${format}'`);
+
+        if ( field?.options?.transformers?.read ){
+              numericValue = field.options.transformers.read(numericValue,field, parent);
+        }
+
+        return numericValue;
+        
     }
 
     write(writer: BitstreamWriter, type : any, instance: any, field: FieldDefinition, value: any) {
@@ -44,6 +52,10 @@ export class NumberSerializer implements Serializer {
         }
 
         let format = field.options?.number?.format ?? 'unsigned';
+
+        if ( field?.options?.transformers?.write ){
+            value = field.options.transformers.write(value,field, instance);
+        }
 
         if (format === 'unsigned')
             writer.write(length, value);

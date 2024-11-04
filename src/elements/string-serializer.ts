@@ -15,8 +15,14 @@ export class StringSerializer implements Serializer {
 
         if (!reader.isAvailable(length*8))
             yield { remaining: length*8, contextHint: () => summarizeField(field) };
-            
-        return reader.readStringSync(length, field.options.string);
+
+        let value = reader.readStringSync(length, field.options.string);
+
+        if ( field?.options?.transformers?.read ){
+            value = field.options.transformers.read(value,field, parent);
+        }
+
+        return value;    
     }
 
     write(writer : BitstreamWriter, type : any, parent : BitstreamElement, field : FieldDefinition, value : any) {
@@ -27,6 +33,10 @@ export class StringSerializer implements Serializer {
             throw new Error(`Failed to resolve length of string via 'length' determinant: ${e.message}`);
         }
 
+        if ( field?.options?.transformers?.write ){
+            value = field.options.transformers.write(value,field, parent);
+        }
+        
         writer.writeString(length, `${value}`, field?.options?.string?.encoding || 'utf-8');
     }
 }

@@ -14,14 +14,21 @@ export class StructureSerializer implements Serializer {
             let result = g.next();
             if (result.done === false)
                 yield result.value;
-            else
+            else {
+                if ( field?.options?.transformers?.read ){
+                    Object.assign(result.value, field.options.transformers.read(result.value,field, parent)); 
+                }   
                 return result.value;
+            }
         }
     }
     
     write(writer: BitstreamWriter, type : any, instance: any, field: FieldDefinition, value: BitstreamElement) {
         if (!value)
             throw new Error(`Cannot write ${field.type.name}#${String(field.name)}: Value is null/undefined`);
+        if ( field?.options?.transformers?.write ){
+            Object.assign(value, field.options.transformers.write(value,field, instance)); 
+        }
         value.write(writer, { skip: field.options?.skip, context: instance?.context });
     }
 }
